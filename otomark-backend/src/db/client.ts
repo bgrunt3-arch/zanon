@@ -17,7 +17,7 @@ db.on('error', (err) => {
 })
 
 // ヘルパー: 単一行取得
-export async function queryOne<T>(
+export async function queryOne<T extends Record<string, unknown>>(
   text: string,
   values?: unknown[]
 ): Promise<T | null> {
@@ -26,7 +26,7 @@ export async function queryOne<T>(
 }
 
 // ヘルパー: 複数行取得
-export async function queryMany<T>(
+export async function queryMany<T extends Record<string, unknown>>(
   text: string,
   values?: unknown[]
 ): Promise<T[]> {
