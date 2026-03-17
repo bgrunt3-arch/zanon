@@ -35,9 +35,9 @@ export function MarkModal({ open, onClose }: Props) {
 
   // MusicBrainz検索
   const mbType = type === 'album' ? 'release' : type === 'track' ? 'recording' : 'artist'
-  const { data: searchData, isFetching } = useQuery({
+  const { data: searchData, isFetching } = useQuery<(MBReleaseResult | MBArtistResult | MBRecordingResult)[]>({
     queryKey: ['mb-search', mbType, debouncedQuery],
-    queryFn: () => {
+    queryFn: async () => {
       if (mbType === 'release') return musicbrainzApi.searchReleases(debouncedQuery).then(r => r.data.results)
       if (mbType === 'artist') return musicbrainzApi.searchArtists(debouncedQuery).then(r => r.data.results)
       return musicbrainzApi.searchRecordings(debouncedQuery).then(r => r.data.results)
