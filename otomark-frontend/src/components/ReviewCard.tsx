@@ -72,8 +72,9 @@ export function ReviewCard({ review }: Props) {
 }
 
 // ユーザー名からアバターカラーを生成
-function avatarColor(username: string) {
+function avatarColor(username: string | undefined) {
   const colors = ['#7c6fff','#ff6b6b','#11998e','#f5c842','#c0392b','#4776e6']
+  if (!username) return colors[0]
   const idx = username.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length
   return colors[idx]
 }
