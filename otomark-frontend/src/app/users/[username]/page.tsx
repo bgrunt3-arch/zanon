@@ -15,7 +15,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
   const reviews = reviewsData?.reviews ?? []
   const marks   = marksData?.marks ?? []
   const isOwnProfile = me?.username === username
-  const isFollowing = false // TODO: APIからフォロー状態を取得
+  const isFollowing = user?.is_following ?? false
 
   if (isLoading) return <div className={styles.center}>読み込み中...</div>
   if (!user) return <div className={styles.center}>ユーザーが見つかりません</div>
