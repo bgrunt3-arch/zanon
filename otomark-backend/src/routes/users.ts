@@ -43,11 +43,13 @@ usersRouter.get('/:username/reviews', async (c) => {
   const reviews = await queryMany(
     `SELECT
        r.id, r.body, r.likes_count, r.created_at, m.score,
+       u.username, u.display_name, u.avatar_url,
        a.id  AS album_id,  a.title  AS album_title,  a.cover_url,
        ar.id AS artist_id, ar.name  AS artist_name,
        t.id  AS track_id,  t.title  AS track_title
      FROM reviews r
-     JOIN marks  m  ON m.id = r.mark_id
+     JOIN users  u  ON u.id  = r.user_id
+     JOIN marks  m  ON m.id  = r.mark_id
      LEFT JOIN albums  a  ON a.id  = m.album_id
      LEFT JOIN artists ar ON ar.id = COALESCE(m.artist_id, a.artist_id)
      LEFT JOIN tracks  t  ON t.id  = m.track_id
