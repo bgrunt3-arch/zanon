@@ -125,6 +125,15 @@ CREATE TABLE IF NOT EXISTS want_list (
   )
 );
 
+-- コメントテーブル
+CREATE TABLE IF NOT EXISTS comments (
+  id          SERIAL PRIMARY KEY,
+  review_id   INT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+  user_id     INT NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+  body        TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+
 -- =============================================
 -- インデックス（パフォーマンス最適化）
 -- =============================================
