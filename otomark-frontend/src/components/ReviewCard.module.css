@@ -93,6 +93,7 @@
   .actionBtn:hover { color: var(--accent); }
   .liked { color: var(--accent2) !important; }
   .activeAction { color: var(--accent) !important; }
+  .savedAction  { color: var(--gold) !important; }
 
   /* コメントパネル */
   .commentPanel {

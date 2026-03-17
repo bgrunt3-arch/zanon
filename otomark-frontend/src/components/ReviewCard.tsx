@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useLikeReview, useComments, useCreateComment, useDeleteComment } from '@/lib/hooks'
+import { useLikeReview, useSaveReview, useComments, useCreateComment, useDeleteComment } from '@/lib/hooks'
 import { useAuthStore } from '@/lib/store'
 import type { Review } from '@/lib/api'
 import styles from './ReviewCard.module.css'
@@ -11,8 +11,10 @@ type Props = { review: Review }
 
 export function ReviewCard({ review }: Props) {
   const { isLoggedIn, user: me } = useAuthStore()
-  const likeMutation   = useLikeReview()
+  const likeMutation = useLikeReview()
+  const saveMutation = useSaveReview()
   const [liked, setLiked] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
 
@@ -92,7 +94,17 @@ export function ReviewCard({ review }: Props) {
         >
           💬 コメント{comments.length > 0 ? ` ${comments.length}` : ''}
         </button>
-        <button className={styles.actionBtn}>🔖 保存</button>
+        <button
+          className={`${styles.actionBtn} ${saved ? styles.savedAction : ''}`}
+          onClick={() => {
+            if (!isLoggedIn) return
+            setSaved(prev => !prev)
+            saveMutation.mutate({ reviewId: review.id, saved })
+          }}
+          disabled={saveMutation.isPending}
+        >
+          {saved ? '🔖 保存済み' : '🔖 保存'}
+        </button>
       </footer>
 
       {/* コメントパネル */}

@@ -193,6 +193,12 @@ export const reviewsApi = {
 
   unlike: (reviewId: number) =>
     apiClient.delete<{ likes_count: number }>(`/reviews/${reviewId}/like`),
+
+  save: (reviewId: number) =>
+    apiClient.post<{ saved: boolean }>(`/reviews/${reviewId}/save`),
+
+  unsave: (reviewId: number) =>
+    apiClient.delete<{ saved: boolean }>(`/reviews/${reviewId}/save`),
 }
 
 // --- コメント ---

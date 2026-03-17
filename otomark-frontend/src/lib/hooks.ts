@@ -214,6 +214,14 @@ import {
     })
   }
   
+  // レビュー保存 / 保存解除
+  export function useSaveReview() {
+    return useMutation({
+      mutationFn: ({ reviewId, saved }: { reviewId: number; saved: boolean }) =>
+        saved ? reviewsApi.unsave(reviewId) : reviewsApi.save(reviewId),
+    })
+  }
+
   // レビュー削除
   export function useDeleteReview() {
     const qc = useQueryClient()
