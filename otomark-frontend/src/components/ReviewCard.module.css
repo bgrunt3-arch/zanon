@@ -92,3 +92,99 @@
   }
   .actionBtn:hover { color: var(--accent); }
   .liked { color: var(--accent2) !important; }
+  .activeAction { color: var(--accent) !important; }
+
+  /* コメントパネル */
+  .commentPanel {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .commentEmpty {
+    font-size: 0.78rem;
+    color: var(--text3);
+    text-align: center;
+    padding: 8px 0;
+  }
+  .commentEmpty a { color: var(--accent); text-decoration: none; }
+
+  .commentItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .commentAvatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-weight: 700; color: white;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .commentBody {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .commentUser {
+    font-weight: 600;
+    color: var(--text2);
+    margin-right: 6px;
+    font-size: 0.75rem;
+  }
+
+  .commentText { color: var(--text); }
+
+  .commentDelete {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+  .commentDelete:hover { opacity: 1; color: var(--accent2); }
+
+  .commentForm {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .commentInput {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .commentInput:focus { border-color: var(--accent); }
+
+  .commentSubmit {
+    padding: 7px 14px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .commentSubmit:disabled { opacity: 0.5; cursor: not-allowed; }

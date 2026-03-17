@@ -10,6 +10,7 @@ import {
     artistsApi,
     marksApi,
     reviewsApi,
+    commentsApi,
     rankingApi,
     usersApi,
     authApi,
@@ -30,6 +31,7 @@ import {
     userReviews: (username: string)=> ['users', username, 'reviews'] as const,
     userMarks:   (username: string)=> ['users', username, 'marks']   as const,
     me:          ()                => ['auth', 'me']     as const,
+    comments:    (reviewId: number)=> ['comments', reviewId]         as const,
   }
   
   // =============================================
@@ -224,6 +226,37 @@ import {
     })
   }
   
+  // コメント一覧
+  export function useComments(reviewId: number, enabled: boolean) {
+    return useQuery({
+      queryKey: queryKeys.comments(reviewId),
+      queryFn: () => commentsApi.list(reviewId).then(r => r.data.comments),
+      enabled: enabled && reviewId > 0,
+    })
+  }
+
+  // コメント投稿
+  export function useCreateComment(reviewId: number) {
+    const qc = useQueryClient()
+    return useMutation({
+      mutationFn: (body: string) => commentsApi.create(reviewId, body).then(r => r.data),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: queryKeys.comments(reviewId) })
+      },
+    })
+  }
+
+  // コメント削除
+  export function useDeleteComment(reviewId: number) {
+    const qc = useQueryClient()
+    return useMutation({
+      mutationFn: (commentId: number) => commentsApi.delete(reviewId, commentId),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: queryKeys.comments(reviewId) })
+      },
+    })
+  }
+
   // フォロー / アンフォロー
   export function useFollow() {
     const qc = useQueryClient()

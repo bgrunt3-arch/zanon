@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useLikeReview } from '@/lib/hooks'
+import { useLikeReview, useComments, useCreateComment, useDeleteComment } from '@/lib/hooks'
 import { useAuthStore } from '@/lib/store'
 import type { Review } from '@/lib/api'
 import styles from './ReviewCard.module.css'
@@ -10,14 +10,27 @@ import styles from './ReviewCard.module.css'
 type Props = { review: Review }
 
 export function ReviewCard({ review }: Props) {
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, user: me } = useAuthStore()
   const likeMutation   = useLikeReview()
   const [liked, setLiked] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [commentText, setCommentText] = useState('')
+
+  const { data: comments = [] } = useComments(review.id, showComments)
+  const createComment = useCreateComment(review.id)
+  const deleteComment = useDeleteComment(review.id)
 
   const handleLike = () => {
     if (!isLoggedIn) return
     setLiked(prev => !prev)
     likeMutation.mutate({ reviewId: review.id, liked })
+  }
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!commentText.trim()) return
+    await createComment.mutateAsync(commentText.trim())
+    setCommentText('')
   }
 
   // マーク対象のタイトル表示
@@ -73,9 +86,63 @@ export function ReviewCard({ review }: Props) {
         >
           {liked ? '♥' : '♡'} {review.likes_count + (liked ? 1 : 0)}
         </button>
-        <button className={styles.actionBtn}>💬 コメント</button>
+        <button
+          className={`${styles.actionBtn} ${showComments ? styles.activeAction : ''}`}
+          onClick={() => setShowComments(prev => !prev)}
+        >
+          💬 コメント{comments.length > 0 ? ` ${comments.length}` : ''}
+        </button>
         <button className={styles.actionBtn}>🔖 保存</button>
       </footer>
+
+      {/* コメントパネル */}
+      {showComments && (
+        <div className={styles.commentPanel}>
+          {comments.length === 0 && !createComment.isPending && (
+            <div className={styles.commentEmpty}>コメントはまだありません</div>
+          )}
+          {comments.map(c => (
+            <div key={c.id} className={styles.commentItem}>
+              <Link href={`/users/${c.username}`} className={styles.commentAvatar} style={{ background: avatarColor(c.username) }}>
+                {c.display_name?.[0] ?? '?'}
+              </Link>
+              <div className={styles.commentBody}>
+                <span className={styles.commentUser}>@{c.username}</span>
+                <span className={styles.commentText}>{c.body}</span>
+              </div>
+              {me?.username === c.username && (
+                <button
+                  className={styles.commentDelete}
+                  onClick={() => deleteComment.mutate(c.id)}
+                  disabled={deleteComment.isPending}
+                >✕</button>
+              )}
+            </div>
+          ))}
+          {isLoggedIn ? (
+            <form className={styles.commentForm} onSubmit={handleCommentSubmit}>
+              <input
+                className={styles.commentInput}
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                placeholder="コメントを入力..."
+                maxLength={500}
+              />
+              <button
+                type="submit"
+                className={styles.commentSubmit}
+                disabled={!commentText.trim() || createComment.isPending}
+              >
+                {createComment.isPending ? '...' : '送信'}
+              </button>
+            </form>
+          ) : (
+            <div className={styles.commentEmpty}>
+              <Link href="/login">ログイン</Link>してコメントする
+            </div>
+          )}
+        </div>
+      )}
     </article>
   )
 }

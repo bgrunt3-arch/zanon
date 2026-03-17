@@ -92,6 +92,16 @@ export type Mark = {
   likes_count?: number
 }
 
+export type Comment = {
+  id: number
+  body: string
+  created_at: string
+  user_id: number
+  username: string
+  display_name: string
+  avatar_url: string | null
+}
+
 export type Review = {
   id: number
   body: string
@@ -182,6 +192,18 @@ export const reviewsApi = {
 
   unlike: (reviewId: number) =>
     apiClient.delete<{ likes_count: number }>(`/reviews/${reviewId}/like`),
+}
+
+// --- コメント ---
+export const commentsApi = {
+  list: (reviewId: number) =>
+    apiClient.get<{ comments: Comment[] }>(`/reviews/${reviewId}/comments`),
+
+  create: (reviewId: number, body: string) =>
+    apiClient.post<Comment>(`/reviews/${reviewId}/comments`, { body }),
+
+  delete: (reviewId: number, commentId: number) =>
+    apiClient.delete(`/reviews/${reviewId}/comments/${commentId}`),
 }
 
 // --- ランキング ---
