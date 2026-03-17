@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { queryOne } from '../db/client.ts'
+import { queryOne, queryMany } from '../db/client.ts'
 import { signToken, authRequired } from '../middleware/auth.ts'
 
 export const authRouter = new Hono()
@@ -119,4 +119,32 @@ authRouter.get('/me', authRequired, async (c) => {
 
   if (!user) return c.json({ error: 'ユーザーが見つかりません' }, 404)
   return c.json(user)
+})
+
+// ===== GET /auth/saved - 保存済みレビュー一覧 =====
+authRouter.get('/saved', authRequired, async (c) => {
+  const { userId } = c.get('user')
+
+  const reviews = await queryMany(
+    `SELECT r.id, r.body, r.likes_count, r.created_at,
+            u.id AS user_id, u.username, u.display_name, u.avatar_url,
+            m.score,
+            a.id AS album_id, a.title AS album_title, a.cover_url AS album_cover,
+            ar.id AS artist_id, ar.name AS artist_name,
+            t.id AS track_id, t.title AS track_title,
+            EXISTS(SELECT 1 FROM review_likes rl WHERE rl.review_id = r.id AND rl.user_id = $1) AS is_liked,
+            true AS is_saved
+     FROM saved_reviews sv
+     JOIN reviews r ON r.id = sv.review_id
+     JOIN users u ON u.id = r.user_id
+     JOIN marks m ON m.id = r.mark_id
+     LEFT JOIN albums a ON a.id = m.album_id
+     LEFT JOIN artists ar ON ar.id = COALESCE(m.artist_id, a.artist_id)
+     LEFT JOIN tracks t ON t.id = m.track_id
+     WHERE sv.user_id = $1
+     ORDER BY sv.created_at DESC`,
+    [userId]
+  )
+
+  return c.json({ reviews })
 })

@@ -22,6 +22,19 @@ reviewsRouter.get('/', authOptional, async (c) => {
     params.push(currentUser.userId)
   }
 
+  let isLikedExpr: string
+  let isSavedExpr: string
+
+  if (currentUser) {
+    const userIdParam = params.length + 1
+    params.push(currentUser.userId)
+    isLikedExpr = `EXISTS(SELECT 1 FROM review_likes rl WHERE rl.review_id = r.id AND rl.user_id = $${userIdParam})`
+    isSavedExpr = `EXISTS(SELECT 1 FROM saved_reviews sr WHERE sr.review_id = r.id AND sr.user_id = $${userIdParam})`
+  } else {
+    isLikedExpr = 'false'
+    isSavedExpr = 'false'
+  }
+
   const reviews = await queryMany(
     `SELECT
        r.id, r.body, r.likes_count, r.created_at,
@@ -31,7 +44,9 @@ reviewsRouter.get('/', authOptional, async (c) => {
        m.score,
        a.id   AS album_id,   a.title  AS album_title,  a.cover_url AS album_cover,
        ar.id  AS artist_id,  ar.name  AS artist_name,
-       t.id   AS track_id,   t.title  AS track_title
+       t.id   AS track_id,   t.title  AS track_title,
+       ${isLikedExpr} AS is_liked,
+       ${isSavedExpr} AS is_saved
      FROM reviews r
      JOIN users  u  ON u.id  = r.user_id
      JOIN marks  m  ON m.id  = r.mark_id
@@ -48,8 +63,22 @@ reviewsRouter.get('/', authOptional, async (c) => {
 })
 
 // ===== GET /reviews/:reviewId - レビュー詳細 =====
-reviewsRouter.get('/:reviewId', async (c) => {
+reviewsRouter.get('/:reviewId', authOptional, async (c) => {
+  const currentUser = c.get('user')
   const reviewId = Number(c.req.param('reviewId'))
+
+  let isLikedExpr: string
+  let isSavedExpr: string
+  let params: unknown[] = [reviewId]
+
+  if (currentUser) {
+    params.push(currentUser.userId)
+    isLikedExpr = `EXISTS(SELECT 1 FROM review_likes rl WHERE rl.review_id = r.id AND rl.user_id = $2)`
+    isSavedExpr = `EXISTS(SELECT 1 FROM saved_reviews sr WHERE sr.review_id = r.id AND sr.user_id = $2)`
+  } else {
+    isLikedExpr = 'false'
+    isSavedExpr = 'false'
+  }
 
   const review = await queryOne(
     `SELECT
@@ -58,7 +87,9 @@ reviewsRouter.get('/:reviewId', async (c) => {
        m.score,
        a.id   AS album_id,   a.title AS album_title,  a.cover_url AS album_cover,
        ar.id  AS artist_id,  ar.name AS artist_name,
-       t.id   AS track_id,   t.title AS track_title
+       t.id   AS track_id,   t.title AS track_title,
+       ${isLikedExpr} AS is_liked,
+       ${isSavedExpr} AS is_saved
      FROM reviews r
      JOIN users  u  ON u.id  = r.user_id
      JOIN marks  m  ON m.id  = r.mark_id
@@ -66,7 +97,7 @@ reviewsRouter.get('/:reviewId', async (c) => {
      LEFT JOIN artists ar ON ar.id = COALESCE(m.artist_id, a.artist_id)
      LEFT JOIN tracks  t  ON t.id  = m.track_id
      WHERE r.id = $1`,
-    [reviewId]
+    params
   )
 
   if (!review) return c.json({ error: 'レビューが見つかりません' }, 404)

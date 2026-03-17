@@ -121,6 +121,8 @@ export type Review = {
   artist_name: string | null
   track_id: number | null
   track_title: string | null
+  is_liked?: boolean
+  is_saved?: boolean
 }
 
 // ===== API関数 =====
@@ -199,6 +201,11 @@ export const reviewsApi = {
 
   unsave: (reviewId: number) =>
     apiClient.delete<{ saved: boolean }>(`/reviews/${reviewId}/save`),
+}
+
+// --- 保存済みレビュー ---
+export const savedApi = {
+  list: () => apiClient.get<{ reviews: Review[] }>('/auth/saved'),
 }
 
 // --- コメント ---

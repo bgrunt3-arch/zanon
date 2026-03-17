@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRanking } from '@/lib/hooks'
 import styles from './page.module.css'
 
@@ -56,11 +57,15 @@ export default function RankingPage() {
       ) : (
         <div className={styles.list}>
           {albums.map((album, i) => (
-            <div key={album.id} className={styles.item}>
+            <Link key={album.id} href={`/albums/${album.id}`} className={styles.item}>
               <div className={`${styles.rank} ${i < 3 ? styles.topRank : ''}`}>
                 {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
               </div>
-              <div className={styles.cover}>💿</div>
+              <div className={styles.cover}>
+                {album.cover_url
+                  ? <img src={album.cover_url} alt={album.title} className={styles.coverImg} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  : '💿'}
+              </div>
               <div className={styles.info}>
                 <div className={styles.itemTitle}>{album.title}</div>
                 <div className={styles.itemArtist}>
@@ -74,7 +79,7 @@ export default function RankingPage() {
               {album.avg_score && (
                 <div className={styles.score}>{Number(album.avg_score).toFixed(1)}</div>
               )}
-            </div>
+            </Link>
           ))}
 
           {albums.length === 0 && !isLoading && (

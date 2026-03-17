@@ -11,6 +11,7 @@ import {
     marksApi,
     reviewsApi,
     commentsApi,
+    savedApi,
     rankingApi,
     usersApi,
     authApi,
@@ -32,6 +33,7 @@ import {
     userMarks:   (username: string)=> ['users', username, 'marks']   as const,
     me:          ()                => ['auth', 'me']     as const,
     comments:    (reviewId: number)=> ['comments', reviewId]         as const,
+    saved:       ()                => ['saved']                      as const,
   }
   
   // =============================================
@@ -214,6 +216,15 @@ import {
     })
   }
   
+  // 保存済みレビュー一覧
+  export function useSavedReviews() {
+    return useQuery({
+      queryKey: queryKeys.saved(),
+      queryFn: () => savedApi.list().then(r => r.data.reviews),
+      staleTime: 1000 * 60,
+    })
+  }
+
   // レビュー保存 / 保存解除
   export function useSaveReview() {
     return useMutation({

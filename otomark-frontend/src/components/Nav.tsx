@@ -13,9 +13,9 @@ export function Nav() {
   const [modalOpen, setModalOpen] = useState(false)
 
   const tabs = [
-    { href: '/',         label: 'ホーム' },
-    { href: '/ranking',  label: 'ランキング' },
-    { href: '/mypage',   label: 'マイページ' },
+    { href: '/',        label: 'ホーム' },
+    { href: '/ranking', label: 'ランキング' },
+    { href: '/search',  label: '検索' },
   ]
 
   return (
@@ -53,6 +53,7 @@ export function Nav() {
                 </div>
                 <div className={styles.dropdown}>
                   <Link href="/mypage" className={styles.dropItem}>マイページ</Link>
+                  <Link href="/saved" className={styles.dropItem}>保存済み</Link>
                   <button className={styles.dropItem} onClick={logout}>ログアウト</button>
                 </div>
               </div>

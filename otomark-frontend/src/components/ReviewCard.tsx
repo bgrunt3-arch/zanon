@@ -13,8 +13,8 @@ export function ReviewCard({ review }: Props) {
   const { isLoggedIn, user: me } = useAuthStore()
   const likeMutation = useLikeReview()
   const saveMutation = useSaveReview()
-  const [liked, setLiked] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [liked, setLiked] = useState(review.is_liked ?? false)
+  const [saved, setSaved] = useState(review.is_saved ?? false)
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
 

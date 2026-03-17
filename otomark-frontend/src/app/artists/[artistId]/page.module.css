@@ -1,0 +1,185 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.center {
+  text-align: center;
+  padding: 4rem;
+  color: var(--text3);
+}
+
+/* ヘッダー */
+.header {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.avatar {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.avatarEmoji { font-size: 4rem; }
+
+.meta { flex: 1; }
+
+.metaLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.subMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 1rem;
+}
+
+.genres {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.genre {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  background: var(--surface2);
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  border: 1px solid var(--border);
+}
+
+/* セクション */
+.section { margin-bottom: 3rem; }
+
+.sectionLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.sectionTitle {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* アルバムグリッド */
+.albumGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.2rem;
+}
+
+.albumCard {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid transparent;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.albumCard:hover {
+  border-color: var(--border);
+  transform: translateY(-2px);
+}
+
+.albumCover {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverEmoji { font-size: 2.5rem; }
+
+.albumInfo {
+  padding: 10px 12px 12px;
+}
+
+.albumTitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.albumMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+}
+
+.albumScore { color: var(--gold); }
+
+.empty {
+  color: var(--text3);
+  font-size: 0.85rem;
+  padding: 2.5rem 0;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: center; text-align: center; }
+  .avatar { width: 120px; height: 120px; }
+  .title { font-size: 1.5rem; }
+  .subMeta { justify-content: center; }
+  .genres { justify-content: center; }
+  .albumGrid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.8rem;
+  }
+}
