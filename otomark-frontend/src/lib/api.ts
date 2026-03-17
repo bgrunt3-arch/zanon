@@ -213,3 +213,49 @@ export const usersApi = {
   following: (username: string) =>
     apiClient.get<{ following: User[] }>(`/users/${username}/following`),
 }
+
+// --- MusicBrainz ---
+export type MBReleaseResult = {
+  mbid: string
+  title: string
+  artist: string
+  date: string | null
+  coverUrl: string
+  trackCount: number | null
+}
+
+export type MBArtistResult = {
+  mbid: string
+  name: string
+  country: string | null
+  genres: string[]
+}
+
+export type MBRecordingResult = {
+  mbid: string
+  title: string
+  artist: string
+  duration: number | null
+  albumTitle: string | null
+  albumMbid: string | null
+}
+
+export type MBImportResult = {
+  artistId?: number
+  albumId?: number
+  trackId?: number
+}
+
+export const musicbrainzApi = {
+  searchReleases: (q: string) =>
+    apiClient.get<{ results: MBReleaseResult[] }>('/musicbrainz/search', { params: { q, type: 'release' } }),
+
+  searchArtists: (q: string) =>
+    apiClient.get<{ results: MBArtistResult[] }>('/musicbrainz/search', { params: { q, type: 'artist' } }),
+
+  searchRecordings: (q: string) =>
+    apiClient.get<{ results: MBRecordingResult[] }>('/musicbrainz/search', { params: { q, type: 'recording' } }),
+
+  import: (data: { type: 'release' | 'artist' | 'recording'; mbid: string }) =>
+    apiClient.post<MBImportResult>('/musicbrainz/import', data),
+}
