@@ -125,6 +125,14 @@ CREATE TABLE IF NOT EXISTS want_list (
   )
 );
 
+-- 保存済みレビューテーブル
+CREATE TABLE IF NOT EXISTS saved_reviews (
+  user_id    INT NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+  review_id  INT NOT NULL REFERENCES reviews(id)  ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, review_id)
+);
+
 -- コメントテーブル
 CREATE TABLE IF NOT EXISTS comments (
   id          SERIAL PRIMARY KEY,

@@ -139,6 +139,36 @@ reviewsRouter.post('/:reviewId/like', authRequired, async (c) => {
   return c.json({ likes_count: updated!.likes_count })
 })
 
+// ===== POST /reviews/:reviewId/save - 保存 =====
+reviewsRouter.post('/:reviewId/save', authRequired, async (c) => {
+  const { userId } = c.get('user')
+  const reviewId   = Number(c.req.param('reviewId'))
+
+  const review = await queryOne<{ id: number }>(
+    'SELECT id FROM reviews WHERE id = $1', [reviewId]
+  )
+  if (!review) return c.json({ error: 'レビューが見つかりません' }, 404)
+
+  await db.query(
+    `INSERT INTO saved_reviews (user_id, review_id)
+     VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [userId, reviewId]
+  )
+  return c.json({ saved: true })
+})
+
+// ===== DELETE /reviews/:reviewId/save - 保存解除 =====
+reviewsRouter.delete('/:reviewId/save', authRequired, async (c) => {
+  const { userId } = c.get('user')
+  const reviewId   = Number(c.req.param('reviewId'))
+
+  await db.query(
+    'DELETE FROM saved_reviews WHERE user_id = $1 AND review_id = $2',
+    [userId, reviewId]
+  )
+  return c.json({ saved: false })
+})
+
 // ===== GET /reviews/:reviewId/comments - コメント一覧 =====
 reviewsRouter.get('/:reviewId/comments', async (c) => {
   const reviewId = Number(c.req.param('reviewId'))
