@@ -1,12 +1,11 @@
 'use client'
 
-import { use } from 'react'
 import { useUser, useUserReviews, useUserMarks, useFollow, useMe } from '@/lib/hooks'
 import { ReviewCard } from '@/components/ReviewCard'
 import styles from './page.module.css'
 
-export default function UserPage({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = use(params)
+export default function UserPage({ params }: { params: { username: string } }) {
+  const { username } = params
   const { data: me } = useMe()
   const { data: user, isLoading } = useUser(username)
   const { data: reviewsData } = useUserReviews(username)
