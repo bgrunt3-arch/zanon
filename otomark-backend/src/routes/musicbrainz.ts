@@ -12,6 +12,14 @@ const MB_HEADERS = {
   'Accept': 'application/json',
 }
 
+// MusicBrainzの部分日付 ("1998", "1998-05") をPostgreSQL DATE型に変換
+function toFullDate(date: string | null | undefined): string | null {
+  if (!date) return null
+  if (/^\d{4}$/.test(date)) return `${date}-01-01`
+  if (/^\d{4}-\d{2}$/.test(date)) return `${date}-01`
+  return date
+}
+
 // インメモリキャッシュ（TTL 5分）
 const cache = new Map<string, { data: unknown; expires: number }>()
 
@@ -92,7 +100,7 @@ musicbrainzRouter.post(
 
       const artistMbid = data['artist-credit']?.[0]?.artist?.id
       const artistName = data['artist-credit']?.[0]?.artist?.name ?? '不明'
-      const releaseDate = data.date ?? null
+      const releaseDate = toFullDate(data.date)
       const coverUrl = `https://coverartarchive.org/release/${mbid}/front-250`
 
       const result = await withTransaction(async (client) => {
