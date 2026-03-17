@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useTimeline, useAlbums } from '@/lib/hooks'
 import { ReviewCard } from '@/components/ReviewCard'
 import styles from './page.module.css'
@@ -28,7 +29,7 @@ export default function HomePage() {
           </div>
           <div className={styles.albumGrid}>
             {albumsData.albums.map(album => (
-              <div key={album.id} className={styles.albumItem}>
+              <Link key={album.id} href={`/albums/${album.id}`} className={styles.albumItem}>
                 <div className={styles.albumCover}>
                   {album.cover_url
                     ? <img src={album.cover_url} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} onError={(e) => { (e.target as HTMLImageElement).replaceWith(Object.assign(document.createElement('span'), { textContent: '💿', className: styles.albumEmoji })) }} />
@@ -44,7 +45,7 @@ export default function HomePage() {
                     <span className={styles.ratingNum}>{Number(album.avg_score).toFixed(1)}</span>
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </section>

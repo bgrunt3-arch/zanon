@@ -1,0 +1,180 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.center {
+  text-align: center;
+  padding: 4rem;
+  color: var(--text3);
+}
+
+/* ヘッダー */
+.header {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cover {
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.coverEmoji { font-size: 4rem; }
+
+.meta { flex: 1; }
+
+.metaLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.artist {
+  font-size: 1rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+
+.subMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 1.2rem;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.scoreBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.scoreNum {
+  font-family: 'DM Mono', monospace;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.stars {
+  color: var(--gold);
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+}
+
+.stat { display: flex; flex-direction: column; }
+.statNum {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.statLabel { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+
+/* セクション */
+.section { margin-bottom: 3rem; }
+
+.sectionLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.sectionTitle {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* トラックリスト */
+.trackList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.trackItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.trackItem:last-child { border-bottom: none; }
+.trackItem:hover { background: var(--surface2); }
+
+.trackNum {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text3);
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.trackTitle {
+  flex: 1;
+  font-size: 0.88rem;
+}
+
+.trackDuration {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text3);
+}
+
+.feed { display: flex; flex-direction: column; gap: 1rem; }
+
+.empty {
+  color: var(--text3);
+  font-size: 0.85rem;
+  padding: 2.5rem 0;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .header { flex-direction: column; }
+  .cover { width: 160px; height: 160px; }
+  .title { font-size: 1.5rem; }
+}
