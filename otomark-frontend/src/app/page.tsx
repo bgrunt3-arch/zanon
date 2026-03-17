@@ -30,7 +30,9 @@ export default function HomePage() {
             {albumsData.albums.map(album => (
               <div key={album.id} className={styles.albumItem}>
                 <div className={styles.albumCover}>
-                  <span className={styles.albumEmoji}>💿</span>
+                  {album.cover_url
+                    ? <img src={album.cover_url} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} onError={(e) => { (e.target as HTMLImageElement).replaceWith(Object.assign(document.createElement('span'), { textContent: '💿', className: styles.albumEmoji })) }} />
+                    : <span className={styles.albumEmoji}>💿</span>}
                 </div>
                 <div className={styles.albumTitle}>{album.title}</div>
                 <div className={styles.albumArtist}>{album.artist_name}</div>

@@ -71,7 +71,9 @@ export default function MyPage() {
             {marks.map(mark => (
               <div key={mark.id} className={styles.markItem}>
                 <div className={styles.markCover}>
-                  <span>{mark.album_id ? '💿' : mark.track_id ? '🎵' : '🎤'}</span>
+                  {mark.album_cover
+                    ? <img src={mark.album_cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    : <span>{mark.album_id ? '💿' : mark.track_id ? '🎵' : '🎤'}</span>}
                   {mark.score && (
                     <div className={styles.markBadge}>
                       {'★'.repeat(mark.score)}

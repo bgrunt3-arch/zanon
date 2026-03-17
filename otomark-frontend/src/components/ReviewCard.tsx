@@ -40,7 +40,11 @@ export function ReviewCard({ review }: Props) {
 
       {/* 作品情報 */}
       <div className={styles.albumRow}>
-        <div className={styles.albumCover}>{targetEmoji}</div>
+        <div className={styles.albumCover}>
+          {review.album_cover
+            ? <img src={review.album_cover} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            : targetEmoji}
+        </div>
         <div>
           <div className={styles.albumTitle}>{targetTitle}</div>
           {targetArtist && <div className={styles.albumArtist}>{targetArtist}</div>}
