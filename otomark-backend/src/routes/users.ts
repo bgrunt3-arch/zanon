@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import { db, queryOne, queryMany, withTransaction } from '../db/client.ts'
-import { authRequired } from '../middleware/auth.ts'
+import { authRequired, authOptional } from '../middleware/auth.ts'
 
 export const usersRouter = new Hono()
 
 // ===== GET /users/:username - ユーザープロフィール =====
-usersRouter.get('/:username', async (c) => {
+usersRouter.get('/:username', authOptional, async (c) => {
+  const currentUser = c.get('user')
   const username = c.req.param('username')
 
   const user = await queryOne(
@@ -26,7 +27,18 @@ usersRouter.get('/:username', async (c) => {
   )
 
   if (!user) return c.json({ error: 'ユーザーが見つかりません' }, 404)
-  return c.json(user)
+
+  // ログイン中ならフォロー状態を付与
+  let is_following = false
+  if (currentUser) {
+    const follow = await queryOne(
+      'SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = $2',
+      [currentUser.userId, (user as any).id]
+    )
+    is_following = !!follow
+  }
+
+  return c.json({ ...user, is_following })
 })
 
 // ===== GET /users/:username/reviews - ユーザーのレビュー一覧 =====
