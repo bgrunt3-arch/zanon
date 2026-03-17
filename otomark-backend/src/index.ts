@@ -10,6 +10,7 @@ import { marksRouter }                         from './routes/marks.ts'
 import { reviewsRouter }                       from './routes/reviews.ts'
 import { albumsRouter, artistsRouter, rankingRouter } from './routes/albums.ts'
 import { usersRouter }                         from './routes/users.ts'
+import { musicbrainzRouter }                   from './routes/musicbrainz.ts'
 
 const app = new Hono()
 
@@ -32,7 +33,8 @@ api.route('/reviews', reviewsRouter)
 api.route('/albums',  albumsRouter)
 api.route('/artists', artistsRouter)
 api.route('/ranking', rankingRouter)
-api.route('/users',   usersRouter)
+api.route('/users',       usersRouter)
+api.route('/musicbrainz', musicbrainzRouter)
 
 // ===== ヘルスチェック =====
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0' }))
