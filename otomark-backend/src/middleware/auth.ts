@@ -9,9 +9,14 @@ export type JwtPayload = {
 
 // ===== JWTトークン生成 =====
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, process.env.JWT_SECRET as string, {
-    expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as string,
-  }) as string
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('JWT_SECRET is not set')
+  }
+
+  const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as jwt.SignOptions['expiresIn']
+  const options: jwt.SignOptions = { expiresIn }
+  return jwt.sign(payload, secret, options)
 }
 
 // ===== 認証必須ミドルウェア =====

@@ -48,12 +48,13 @@ app.onError((err, c) => {
 
 // ===== サーバー起動 =====
 const port = Number(process.env.PORT ?? 3000)
+const hostname = process.env.HOST ?? '0.0.0.0'
 console.log(`
 🎵 Otomark API サーバー起動
    URL  : http://localhost:${port}
    ENV  : ${process.env.NODE_ENV ?? 'development'}
 `)
 
-serve({ fetch: app.fetch, port })
+serve({ fetch: app.fetch, port, hostname })
 
 export default app
