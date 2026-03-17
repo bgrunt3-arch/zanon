@@ -23,6 +23,10 @@
     flex-shrink: 0;
   }
   
+  .avatarLink { display: contents; }
+  .usernameLink { text-decoration: none; color: inherit; }
+  .usernameLink:hover .username { color: var(--accent); }
+
   .username    { font-size: 0.82rem; font-weight: 500; margin-right: 6px; }
   .displayName { font-size: 0.75rem; color: var(--text2); }
   .time {

@@ -1,0 +1,108 @@
+'use client'
+
+import { use } from 'react'
+import { useUser, useUserReviews, useUserMarks, useFollow, useMe } from '@/lib/hooks'
+import { ReviewCard } from '@/components/ReviewCard'
+import styles from './page.module.css'
+
+export default function UserPage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = use(params)
+  const { data: me } = useMe()
+  const { data: user, isLoading } = useUser(username)
+  const { data: reviewsData } = useUserReviews(username)
+  const { data: marksData } = useUserMarks(username)
+  const followMutation = useFollow()
+
+  const reviews = reviewsData?.reviews ?? []
+  const marks   = marksData?.marks ?? []
+  const isOwnProfile = me?.username === username
+  const isFollowing = false // TODO: APIからフォロー状態を取得
+
+  if (isLoading) return <div className={styles.center}>読み込み中...</div>
+  if (!user) return <div className={styles.center}>ユーザーが見つかりません</div>
+
+  const handleFollow = () => {
+    followMutation.mutate({ username, following: isFollowing })
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.profileHeader}>
+        <div className={styles.avatar}>
+          {user.display_name?.[0] ?? '?'}
+        </div>
+        <div className={styles.profileInfo}>
+          <div className={styles.nameRow}>
+            <h1 className={styles.displayName}>{user.display_name}</h1>
+            {!isOwnProfile && (
+              <button
+                className={`${styles.followBtn} ${isFollowing ? styles.following : ''}`}
+                onClick={handleFollow}
+                disabled={followMutation.isPending}
+              >
+                {followMutation.isPending ? '...' : isFollowing ? 'フォロー中' : 'フォロー'}
+              </button>
+            )}
+          </div>
+          <div className={styles.handle}>@{user.username}</div>
+          {user.bio && <p className={styles.bio}>{user.bio}</p>}
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <span className={styles.statNum}>{user.marks_count ?? 0}</span>
+              <span className={styles.statLabel}>マーク</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statNum}>{user.reviews_count ?? 0}</span>
+              <span className={styles.statLabel}>レビュー</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statNum}>{user.following_count ?? 0}</span>
+              <span className={styles.statLabel}>フォロー中</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statNum}>{user.followers_count ?? 0}</span>
+              <span className={styles.statLabel}>フォロワー</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* 聴いた作品 */}
+      <section className={styles.section}>
+        <div className={styles.sectionLabel}>Listened</div>
+        <h2 className={styles.sectionTitle}>聴いた作品</h2>
+        {marks.length === 0 ? (
+          <div className={styles.empty}>まだ記録がありません</div>
+        ) : (
+          <div className={styles.marksGrid}>
+            {marks.map(mark => (
+              <div key={mark.id} className={styles.markItem}>
+                <div className={styles.markCover}>
+                  {mark.album_cover
+                    ? <img src={mark.album_cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    : <span>{mark.album_id ? '💿' : mark.track_id ? '🎵' : '🎤'}</span>}
+                  {mark.score && <div className={styles.markBadge}>{'★'.repeat(mark.score)}</div>}
+                </div>
+                <div className={styles.markTitle}>{mark.album_title ?? mark.track_title ?? mark.artist_name}</div>
+                <div className={styles.markArtist}>{mark.artist_name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* レビュー */}
+      <section className={styles.section}>
+        <div className={styles.sectionLabel}>Reviews</div>
+        <h2 className={styles.sectionTitle}>レビュー</h2>
+        {reviews.length === 0 ? (
+          <div className={styles.empty}>まだレビューがありません</div>
+        ) : (
+          <div className={styles.feed}>
+            {reviews.map(r => <ReviewCard key={r.id} review={r} />)}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}

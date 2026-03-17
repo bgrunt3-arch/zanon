@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useLikeReview } from '@/lib/hooks'
 import { useAuthStore } from '@/lib/store'
 import type { Review } from '@/lib/api'
@@ -28,12 +29,16 @@ export function ReviewCard({ review }: Props) {
     <article className={styles.card}>
       {/* ユーザー情報 */}
       <header className={styles.header}>
-        <div className={styles.avatar} style={{ background: avatarColor(review.username) }}>
-          {review.display_name?.[0] ?? '?'}
-        </div>
+        <Link href={`/users/${review.username}`} className={styles.avatarLink}>
+          <div className={styles.avatar} style={{ background: avatarColor(review.username) }}>
+            {review.display_name?.[0] ?? '?'}
+          </div>
+        </Link>
         <div>
-          <span className={styles.username}>@{review.username}</span>
-          <span className={styles.displayName}>{review.display_name}</span>
+          <Link href={`/users/${review.username}`} className={styles.usernameLink}>
+            <span className={styles.username}>@{review.username}</span>
+            <span className={styles.displayName}>{review.display_name}</span>
+          </Link>
         </div>
         <time className={styles.time}>{formatDate(review.created_at)}</time>
       </header>
