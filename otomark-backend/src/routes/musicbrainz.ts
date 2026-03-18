@@ -39,27 +39,54 @@ musicbrainzRouter.get(
   '/search',
   zValidator('query', z.object({
     q:    z.string().min(1),
-    type: z.enum(['release', 'artist', 'recording']).default('release'),
+    type: z.enum(['release-group', 'release', 'artist', 'recording']).default('release-group'),
     limit: z.coerce.number().min(1).max(25).default(10),
   })),
   async (c) => {
     const { q, type, limit } = c.req.valid('query')
 
-    const url = `${MB_BASE}/${type}?query=${encodeURIComponent(q)}&limit=${limit}&fmt=json`
+    // release-group/release は日付ソートのため多めに取得してから絞り込む
+    const fetchLimit = (type === 'release-group' || type === 'release')
+      ? Math.min(limit * 5, 100)
+      : limit
+    const url = `${MB_BASE}/${type}?query=${encodeURIComponent(q)}&limit=${fetchLimit}&fmt=json`
     const data = await mbFetch(url) as any
 
     // レスポンスを統一フォーマットに整形
     let results: unknown[]
 
-    if (type === 'release') {
-      results = (data.releases ?? []).map((r: any) => ({
-        mbid:       r.id,
-        title:      r.title,
-        artist:     r['artist-credit']?.[0]?.artist?.name ?? '不明',
-        date:       r.date ?? null,
-        coverUrl:   `https://coverartarchive.org/release/${r.id}/front-250`,
-        trackCount: r['track-count'] ?? null,
-      }))
+    if (type === 'release-group') {
+      results = (data['release-groups'] ?? [])
+        .map((rg: any) => ({
+          mbid:        rg.id,
+          title:       rg.title,
+          artist:      rg['artist-credit']?.[0]?.artist?.name ?? '不明',
+          date:        rg['first-release-date'] ?? null,
+          primaryType: rg['primary-type'] ?? null,
+          coverUrl:    `https://coverartarchive.org/release-group/${rg.id}/front-250`,
+        }))
+        .sort((a: any, b: any) => {
+          if (!a.date) return 1
+          if (!b.date) return -1
+          return b.date.localeCompare(a.date)
+        })
+        .slice(0, limit)
+    } else if (type === 'release') {
+      results = (data.releases ?? [])
+        .map((r: any) => ({
+          mbid:       r.id,
+          title:      r.title,
+          artist:     r['artist-credit']?.[0]?.artist?.name ?? '不明',
+          date:       r.date ?? null,
+          coverUrl:   `https://coverartarchive.org/release/${r.id}/front-250`,
+          trackCount: r['track-count'] ?? null,
+        }))
+        .sort((a: any, b: any) => {
+          if (!a.date) return 1
+          if (!b.date) return -1
+          return b.date.localeCompare(a.date)
+        })
+        .slice(0, limit)
     } else if (type === 'artist') {
       results = (data.artists ?? []).map((a: any) => ({
         mbid:    a.id,
@@ -85,7 +112,6 @@ musicbrainzRouter.get(
 // ===== POST /musicbrainz/import =====
 musicbrainzRouter.post(
   '/import',
-  authRequired,
   zValidator('json', z.object({
     type: z.enum(['release', 'artist', 'recording']),
     mbid: z.string().uuid(),

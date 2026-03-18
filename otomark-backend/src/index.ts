@@ -12,6 +12,7 @@ import { albumsRouter, artistsRouter, rankingRouter } from './routes/albums.ts'
 import { usersRouter }                         from './routes/users.ts'
 import { musicbrainzRouter }                   from './routes/musicbrainz.ts'
 import { notificationsRouter }                 from './routes/notifications.ts'
+import { paymentRouter }                        from './routes/payment.ts'
 
 const app = new Hono()
 
@@ -37,6 +38,7 @@ api.route('/ranking', rankingRouter)
 api.route('/users',       usersRouter)
 api.route('/musicbrainz', musicbrainzRouter)
 api.route('/notifications', notificationsRouter)
+api.route('/payment',      paymentRouter)
 
 // ===== ヘルスチェック =====
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0' }))
