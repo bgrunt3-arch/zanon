@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { subscribeToast, type ToastEvent, type ToastType } from '@/lib/toast'
 import styles from './Toast.module.css'
 
@@ -49,7 +50,13 @@ export function ToastContainer() {
           className={`${styles.toast} ${styles[t.type]} ${t.leaving ? styles.leaving : ''}`}
         >
           <span className={styles.icon}>{ICONS[t.type]}</span>
-          <span className={styles.message}>{t.message}</span>
+          {t.href ? (
+            <Link href={t.href} className={`${styles.message} ${styles.messageLink}`} onClick={() => dismiss(t.id)}>
+              {t.message}
+            </Link>
+          ) : (
+            <span className={styles.message}>{t.message}</span>
+          )}
           <button className={styles.close} onClick={() => dismiss(t.id)}>✕</button>
         </div>
       ))}

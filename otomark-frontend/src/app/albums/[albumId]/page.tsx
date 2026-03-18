@@ -49,7 +49,7 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
         const data = res.data as { id?: number }
         if (data?.id) setWantId(data.id)
         setIsWanted(true)
-        toast.success('聴きたいリストに追加しました')
+        toast.success('聴きたいリストに追加しました', { href: '/want' })
       } catch {
         toast.error('追加に失敗しました')
       }
