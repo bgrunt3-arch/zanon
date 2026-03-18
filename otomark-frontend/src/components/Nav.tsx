@@ -186,6 +186,7 @@ export function Nav() {
                 {dropdownOpen && (
                   <div className={styles.dropdown}>
                     <Link href="/mypage" className={styles.dropItem} onClick={() => setDropdownOpen(false)}>マイページ</Link>
+                    <Link href="/want" className={styles.dropItem} onClick={() => setDropdownOpen(false)}>聴きたいリスト</Link>
                     <Link href="/saved" className={styles.dropItem} onClick={() => setDropdownOpen(false)}>保存済み</Link>
                     <button className={styles.dropItem} onClick={() => { setDropdownOpen(false); logout() }}>ログアウト</button>
                   </div>

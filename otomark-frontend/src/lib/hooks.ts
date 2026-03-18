@@ -348,6 +348,14 @@ import {
     })
   }
 
+  // 聴きたいリスト取得
+  export function useWantList() {
+    return useQuery({
+      queryKey: ['want-list'],
+      queryFn: () => wantApi.list().then(r => r.data.items),
+    })
+  }
+
   // 聴きたい追加
   export function useAddWant() {
     return useMutation({
@@ -357,8 +365,10 @@ import {
 
   // 聴きたい削除
   export function useRemoveWant() {
+    const qc = useQueryClient()
     return useMutation({
       mutationFn: wantApi.remove,
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['want-list'] }),
     })
   }
 

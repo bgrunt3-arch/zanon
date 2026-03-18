@@ -1,0 +1,135 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.sectionLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.pageTitle {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: var(--text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--surface3); }
+
+.cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverPlaceholder {
+  font-size: 1.6rem;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.title:hover { color: var(--accent); }
+
+.sub {
+  font-size: 0.78rem;
+  color: var(--text2);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface3);
+  color: var(--text3);
+}
+
+.removeBtn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text3);
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.removeBtn:hover { background: rgba(255,107,107,0.1); border-color: var(--accent2); color: var(--accent2); }
+.removeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.center {
+  display: flex;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.empty {
+  color: var(--text3);
+  font-size: 0.88rem;
+  line-height: 1.8;
+  text-align: center;
+  padding: 3rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
