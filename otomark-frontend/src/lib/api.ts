@@ -137,6 +137,9 @@ export const authApi = {
 
   me: () =>
     apiClient.get<User>('/auth/me'),
+
+  updateProfile: (data: { display_name?: string; bio?: string }) =>
+    apiClient.put<User>('/auth/profile', data),
 }
 
 // --- アルバム ---
@@ -227,6 +230,44 @@ export const rankingApi = {
 
   artists: (params?: { limit?: number }) =>
     apiClient.get<{ artists: Artist[] }>('/ranking/artists', { params }),
+}
+
+// --- 通知 ---
+export type Notification = {
+  id: number
+  type: 'like' | 'comment' | 'follow'
+  is_read: boolean
+  created_at: string
+  review_id: number | null
+  actor_username: string
+  actor_display_name: string
+  review_body: string | null
+}
+
+export const notificationsApi = {
+  list: () => apiClient.get<{ notifications: Notification[]; unread_count: number }>('/notifications'),
+  readAll: () => apiClient.post('/notifications/read-all'),
+}
+
+// --- 聴きたいリスト ---
+export type WantItem = {
+  id: number
+  album_id: number | null
+  album_title: string | null
+  album_cover: string | null
+  artist_id: number | null
+  artist_name: string | null
+  track_id: number | null
+  track_title: string | null
+  created_at: string
+}
+
+export const wantApi = {
+  add: (data: { album_id?: number; artist_id?: number; track_id?: number }) =>
+    apiClient.post('/marks/want', data),
+  remove: (id: number) =>
+    apiClient.delete(`/marks/want/${id}`),
+  list: () => apiClient.get<{ items: WantItem[] }>('/marks/want'),
 }
 
 // --- ユーザー ---

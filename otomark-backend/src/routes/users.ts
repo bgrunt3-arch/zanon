@@ -91,6 +91,11 @@ usersRouter.post('/:username/follow', authRequired, async (c) => {
     [userId, target.id]
   )
 
+  await db.query(
+    `INSERT INTO notifications (user_id, actor_id, type) VALUES ($1, $2, 'follow') ON CONFLICT DO NOTHING`,
+    [target.id, userId]
+  )
+
   return c.json({ success: true, following: true })
 })
 

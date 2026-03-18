@@ -4,8 +4,83 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useAuthStore } from '@/lib/store'
+import { useNotifications, useReadAllNotifications } from '@/lib/hooks'
 import { MarkModal } from './MarkModal'
 import styles from './Nav.module.css'
+
+function NotificationBell() {
+  const { isLoggedIn } = useAuthStore()
+  const [open, setOpen] = useState(false)
+  const { data } = useNotifications(isLoggedIn)
+  const readAll  = useReadAllNotifications()
+
+  const notifications = data?.notifications ?? []
+  const unreadCount   = data?.unread_count ?? 0
+
+  if (!isLoggedIn) return null
+
+  const handleReadAll = () => {
+    readAll.mutate()
+  }
+
+  const notifLabel = (n: { type: string; actor_display_name: string; review_body: string | null }) => {
+    if (n.type === 'like')    return `${n.actor_display_name} があなたのレビューにいいねしました`
+    if (n.type === 'comment') return `${n.actor_display_name} があなたのレビューにコメントしました`
+    if (n.type === 'follow')  return `${n.actor_display_name} があなたをフォローしました`
+    return `${n.actor_display_name} からの通知`
+  }
+
+  return (
+    <div className={styles.bellWrap}>
+      <button
+        className={styles.bellBtn}
+        onClick={() => setOpen(prev => !prev)}
+        aria-label={`通知 ${unreadCount > 0 ? `(${unreadCount}件未読)` : ''}`}
+      >
+        🔔
+        {unreadCount > 0 && (
+          <span className={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className={styles.notifDropdown}>
+          <div className={styles.notifHeader}>
+            <span className={styles.notifTitle}>通知</span>
+            {unreadCount > 0 && (
+              <button
+                className={styles.readAllBtn}
+                onClick={handleReadAll}
+                disabled={readAll.isPending}
+              >
+                すべて既読
+              </button>
+            )}
+          </div>
+          <div className={styles.notifList}>
+            {notifications.length === 0 ? (
+              <div className={styles.notifEmpty}>通知はありません</div>
+            ) : (
+              notifications.slice(0, 20).map(n => (
+                <div
+                  key={n.id}
+                  className={`${styles.notifItem} ${!n.is_read ? styles.notifUnread : ''}`}
+                >
+                  <div className={styles.notifText}>{notifLabel(n)}</div>
+                  {n.review_body && (
+                    <div className={styles.notifSub}>
+                      {n.review_body.slice(0, 60)}{n.review_body.length > 60 ? '...' : ''}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function Nav() {
   const pathname    = usePathname()
@@ -44,6 +119,7 @@ export function Nav() {
         <div className={styles.right}>
           {isLoggedIn ? (
             <>
+              <NotificationBell />
               <button className={styles.btnPost} onClick={() => setModalOpen(true)}>
                 ＋ マーク
               </button>

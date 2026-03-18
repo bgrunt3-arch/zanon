@@ -1,7 +1,10 @@
 'use client'
 
-import { useAlbum } from '@/lib/hooks'
+import { useState } from 'react'
+import { useAlbum, useAddWant, useRemoveWant } from '@/lib/hooks'
+import { useAuthStore } from '@/lib/store'
 import { ReviewCard } from '@/components/ReviewCard'
+import { toast } from '@/lib/toast'
 import styles from './page.module.css'
 
 function formatDuration(sec: number | null) {
@@ -14,12 +17,44 @@ function formatDuration(sec: number | null) {
 export default function AlbumPage({ params }: { params: { albumId: string } }) {
   const albumId = Number(params.albumId)
   const { data: album, isLoading } = useAlbum(albumId)
+  const { isLoggedIn } = useAuthStore()
+  const addWant    = useAddWant()
+  const removeWant = useRemoveWant()
+  const [wantId, setWantId]     = useState<number | null>(null)
+  const [isWanted, setIsWanted] = useState(false)
 
   if (isLoading) return <div className={styles.center}>読み込み中...</div>
   if (!album) return <div className={styles.center}>アルバムが見つかりません</div>
 
   const tracks  = album.tracks  ?? []
   const reviews = album.reviews ?? []
+
+  const handleWant = async () => {
+    if (!isLoggedIn) {
+      toast.info('ログインが必要です')
+      return
+    }
+    if (isWanted && wantId !== null) {
+      try {
+        await removeWant.mutateAsync(wantId)
+        setIsWanted(false)
+        setWantId(null)
+        toast.success('聴きたいリストから削除しました')
+      } catch {
+        toast.error('削除に失敗しました')
+      }
+    } else {
+      try {
+        const res = await addWant.mutateAsync({ album_id: albumId })
+        const data = res.data as { id?: number }
+        if (data?.id) setWantId(data.id)
+        setIsWanted(true)
+        toast.success('聴きたいリストに追加しました')
+      } catch {
+        toast.error('追加に失敗しました')
+      }
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -53,6 +88,14 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
               <span className={styles.statNum}>{album.reviews_count}</span>
               <span className={styles.statLabel}>レビュー</span>
             </div>
+
+            <button
+              className={`${styles.wantBtn} ${isWanted ? styles.wantBtnActive : ''}`}
+              onClick={handleWant}
+              disabled={addWant.isPending || removeWant.isPending}
+            >
+              {isWanted ? '✓ 聴きたい登録済み' : '♡ 聴きたい'}
+            </button>
           </div>
         </div>
       </header>

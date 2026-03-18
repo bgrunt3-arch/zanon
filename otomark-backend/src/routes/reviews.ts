@@ -145,8 +145,8 @@ reviewsRouter.post('/:reviewId/like', authRequired, async (c) => {
   const { userId } = c.get('user')
   const reviewId   = Number(c.req.param('reviewId'))
 
-  const review = await queryOne<{ id: number }>(
-    'SELECT id FROM reviews WHERE id = $1', [reviewId]
+  const review = await queryOne<{ id: number; user_id: number }>(
+    'SELECT id, user_id FROM reviews WHERE id = $1', [reviewId]
   )
   if (!review) return c.json({ error: 'レビューが見つかりません' }, 404)
 
@@ -163,6 +163,15 @@ reviewsRouter.post('/:reviewId/like', authRequired, async (c) => {
       [reviewId]
     )
   })
+
+  // 通知作成（自分へのいいねは除外）
+  if (review.user_id !== userId) {
+    await db.query(
+      `INSERT INTO notifications (user_id, actor_id, type, review_id)
+       VALUES ($1, $2, 'like', $3) ON CONFLICT DO NOTHING`,
+      [review.user_id, userId, reviewId]
+    )
+  }
 
   const updated = await queryOne<{ likes_count: number }>(
     'SELECT likes_count FROM reviews WHERE id = $1', [reviewId]
@@ -226,8 +235,8 @@ reviewsRouter.post(
     const reviewId   = Number(c.req.param('reviewId'))
     const { body }   = c.req.valid('json')
 
-    const review = await queryOne<{ id: number }>(
-      'SELECT id FROM reviews WHERE id = $1', [reviewId]
+    const review = await queryOne<{ id: number; user_id: number }>(
+      'SELECT id, user_id FROM reviews WHERE id = $1', [reviewId]
     )
     if (!review) return c.json({ error: 'レビューが見つかりません' }, 404)
 
@@ -237,6 +246,15 @@ reviewsRouter.post(
        RETURNING id, body, created_at`,
       [reviewId, userId, body]
     )
+
+    // 通知作成（自分のレビューへのコメントは除外）
+    if (review.user_id !== userId) {
+      await db.query(
+        `INSERT INTO notifications (user_id, actor_id, type, review_id) VALUES ($1, $2, 'comment', $3)`,
+        [review.user_id, userId, reviewId]
+      )
+    }
+
     return c.json(comment, 201)
   }
 )

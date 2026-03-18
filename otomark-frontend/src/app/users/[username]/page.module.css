@@ -67,6 +67,22 @@
   cursor: not-allowed;
 }
 
+.editBtn {
+  padding: 6px 18px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.editBtn:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
 .handle {
   font-family: 'DM Mono', monospace;
   font-size: 0.8rem;

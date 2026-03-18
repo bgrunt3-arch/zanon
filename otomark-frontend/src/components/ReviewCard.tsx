@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useLikeReview, useSaveReview, useComments, useCreateComment, useDeleteComment } from '@/lib/hooks'
+import { useLikeReview, useSaveReview, useComments, useCreateComment, useDeleteComment, useDeleteReview, useEditReview } from '@/lib/hooks'
 import { useAuthStore } from '@/lib/store'
+import { toast } from '@/lib/toast'
 import type { Review } from '@/lib/api'
 import styles from './ReviewCard.module.css'
 
@@ -11,16 +12,36 @@ type Props = { review: Review }
 
 export function ReviewCard({ review }: Props) {
   const { isLoggedIn, user: me } = useAuthStore()
-  const likeMutation = useLikeReview()
-  const saveMutation = useSaveReview()
-  const [liked, setLiked] = useState(review.is_liked ?? false)
-  const [saved, setSaved] = useState(review.is_saved ?? false)
+  const likeMutation   = useLikeReview()
+  const saveMutation   = useSaveReview()
+  const deleteMutation = useDeleteReview()
+  const editMutation   = useEditReview()
+  const [liked, setLiked]             = useState(review.is_liked ?? false)
+  const [saved, setSaved]             = useState(review.is_saved ?? false)
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [menuOpen, setMenuOpen]       = useState(false)
+  const [editing, setEditing]         = useState(false)
+  const [editBody, setEditBody]       = useState(review.body)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: comments = [] } = useComments(review.id, showComments)
   const createComment = useCreateComment(review.id)
   const deleteComment = useDeleteComment(review.id)
+
+  const isOwn = me?.username === review.username
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
 
   const handleLike = () => {
     if (!isLoggedIn) return
@@ -33,6 +54,28 @@ export function ReviewCard({ review }: Props) {
     if (!commentText.trim()) return
     await createComment.mutateAsync(commentText.trim())
     setCommentText('')
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('このレビューを削除しますか？')) return
+    try {
+      await deleteMutation.mutateAsync(review.id)
+      toast.success('レビューを削除しました')
+    } catch {
+      toast.error('削除に失敗しました')
+    }
+    setMenuOpen(false)
+  }
+
+  const handleEditSave = async () => {
+    if (!editBody.trim()) return
+    try {
+      await editMutation.mutateAsync({ reviewId: review.id, body: editBody.trim() })
+      toast.success('レビューを更新しました')
+      setEditing(false)
+    } catch {
+      toast.error('更新に失敗しました')
+    }
   }
 
   // マーク対象のタイトル表示
@@ -56,6 +99,36 @@ export function ReviewCard({ review }: Props) {
           </Link>
         </div>
         <time className={styles.time}>{formatDate(review.created_at)}</time>
+
+        {/* 編集・削除メニュー（自分のレビューのみ） */}
+        {isOwn && (
+          <div className={styles.menuWrap} ref={menuRef}>
+            <button
+              className={styles.menuBtn}
+              onClick={() => setMenuOpen(prev => !prev)}
+              aria-label="メニュー"
+            >
+              •••
+            </button>
+            {menuOpen && (
+              <div className={styles.menuDropdown}>
+                <button
+                  className={styles.menuItem}
+                  onClick={() => { setEditing(true); setEditBody(review.body); setMenuOpen(false) }}
+                >
+                  編集
+                </button>
+                <button
+                  className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  削除
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* 作品情報 */}
@@ -76,8 +149,35 @@ export function ReviewCard({ review }: Props) {
         )}
       </div>
 
-      {/* レビュー本文 */}
-      <p className={styles.body}>{review.body}</p>
+      {/* レビュー本文 or 編集フォーム */}
+      {editing ? (
+        <div className={styles.editArea}>
+          <textarea
+            className={styles.editTextarea}
+            value={editBody}
+            onChange={e => setEditBody(e.target.value)}
+            rows={4}
+            maxLength={2000}
+          />
+          <div className={styles.editActions}>
+            <button
+              className={styles.editCancel}
+              onClick={() => setEditing(false)}
+            >
+              キャンセル
+            </button>
+            <button
+              className={styles.editSave}
+              onClick={handleEditSave}
+              disabled={!editBody.trim() || editMutation.isPending}
+            >
+              {editMutation.isPending ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className={styles.body}>{review.body}</p>
+      )}
 
       {/* アクション */}
       <footer className={styles.actions}>

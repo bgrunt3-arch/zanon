@@ -102,6 +102,29 @@
 }
 .statLabel { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
 
+.wantBtn {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  margin-left: auto;
+}
+.wantBtn:hover {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+.wantBtnActive {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(196, 255, 51, 0.08);
+}
+.wantBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* セクション */
 .section { margin-bottom: 3rem; }
 

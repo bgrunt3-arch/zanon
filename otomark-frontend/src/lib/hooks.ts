@@ -15,6 +15,8 @@ import {
     rankingApi,
     usersApi,
     authApi,
+    notificationsApi,
+    wantApi,
     type Review,
   } from './api'
   
@@ -273,6 +275,55 @@ import {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: queryKeys.comments(reviewId) })
       },
+    })
+  }
+
+  // レビュー編集
+  export function useEditReview() {
+    const qc = useQueryClient()
+    return useMutation({
+      mutationFn: ({ reviewId, body }: { reviewId: number; body: string }) =>
+        reviewsApi.update(reviewId, body),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['reviews'] })
+        qc.invalidateQueries({ queryKey: ['users'] })
+      },
+    })
+  }
+
+  // 通知一覧（30秒ポーリング）
+  export function useNotifications(enabled: boolean) {
+    return useQuery({
+      queryKey: ['notifications'],
+      queryFn: () => notificationsApi.list().then(r => r.data),
+      refetchInterval: 30_000,
+      enabled,
+      staleTime: 20_000,
+    })
+  }
+
+  // 通知全既読
+  export function useReadAllNotifications() {
+    const qc = useQueryClient()
+    return useMutation({
+      mutationFn: () => notificationsApi.readAll(),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['notifications'] })
+      },
+    })
+  }
+
+  // 聴きたい追加
+  export function useAddWant() {
+    return useMutation({
+      mutationFn: wantApi.add,
+    })
+  }
+
+  // 聴きたい削除
+  export function useRemoveWant() {
+    return useMutation({
+      mutationFn: wantApi.remove,
     })
   }
 

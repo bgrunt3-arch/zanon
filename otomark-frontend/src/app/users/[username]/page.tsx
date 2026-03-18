@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useUser, useUserReviews, useUserMarks, useFollow, useMe } from '@/lib/hooks'
 import { ReviewCard } from '@/components/ReviewCard'
+import { ProfileEditModal } from '@/components/ProfileEditModal'
 import styles from './page.module.css'
 
 export default function UserPage({ params }: { params: { username: string } }) {
@@ -11,6 +13,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
   const { data: reviewsData } = useUserReviews(username)
   const { data: marksData } = useUserMarks(username)
   const followMutation = useFollow()
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   const reviews = reviewsData?.reviews ?? []
   const marks   = marksData?.marks ?? []
@@ -33,7 +36,14 @@ export default function UserPage({ params }: { params: { username: string } }) {
         <div className={styles.profileInfo}>
           <div className={styles.nameRow}>
             <h1 className={styles.displayName}>{user.display_name}</h1>
-            {!isOwnProfile && (
+            {isOwnProfile ? (
+              <button
+                className={styles.editBtn}
+                onClick={() => setEditModalOpen(true)}
+              >
+                編集
+              </button>
+            ) : (
               <button
                 className={`${styles.followBtn} ${isFollowing ? styles.following : ''}`}
                 onClick={handleFollow}
@@ -102,6 +112,13 @@ export default function UserPage({ params }: { params: { username: string } }) {
           </div>
         )}
       </section>
+
+      <ProfileEditModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        initialDisplayName={user.display_name}
+        initialBio={user.bio ?? ''}
+      />
     </div>
   )
 }

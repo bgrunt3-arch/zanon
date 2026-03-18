@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { queryOne, queryMany } from '../db/client.ts'
+import { db, queryOne, queryMany } from '../db/client.ts'
 import { signToken, authRequired } from '../middleware/auth.ts'
 
 export const authRouter = new Hono()
@@ -147,4 +147,26 @@ authRouter.get('/saved', authRequired, async (c) => {
   )
 
   return c.json({ reviews })
+})
+
+// PUT /auth/profile - プロフィール編集
+authRouter.put('/profile', authRequired, zValidator('json', z.object({
+  display_name: z.string().min(1).max(50).optional(),
+  bio: z.string().max(200).optional().nullable(),
+})), async (c) => {
+  const { userId } = c.get('user')
+  const { display_name, bio } = c.req.valid('json')
+
+  const sets: string[] = []
+  const params: unknown[] = []
+  if (display_name !== undefined) { params.push(display_name); sets.push(`display_name = $${params.length}`) }
+  if (bio !== undefined) { params.push(bio); sets.push(`bio = $${params.length}`) }
+  if (sets.length === 0) return c.json({ error: '更新する項目がありません' }, 400)
+
+  params.push(userId)
+  const user = await queryOne(
+    `UPDATE users SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING id, username, display_name, bio, avatar_url`,
+    params
+  )
+  return c.json(user)
 })

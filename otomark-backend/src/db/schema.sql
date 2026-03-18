@@ -142,6 +142,18 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at  TIMESTAMP DEFAULT NOW()
 );
 
+-- 通知テーブル
+CREATE TABLE IF NOT EXISTS notifications (
+  id          SERIAL PRIMARY KEY,
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  actor_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        VARCHAR(20) NOT NULL CHECK (type IN ('like', 'comment', 'follow')),
+  review_id   INT REFERENCES reviews(id) ON DELETE CASCADE,
+  is_read     BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+
 -- =============================================
 -- インデックス（パフォーマンス最適化）
 -- =============================================
