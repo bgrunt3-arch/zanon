@@ -300,15 +300,20 @@
     .bottomTab {
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 0.82rem;
-      font-weight: 500;
+      gap: 3px;
       color: var(--text2);
       transition: color 0.2s;
     }
     .bottomTab:hover { color: var(--text); }
-    .bottomTabActive { color: var(--accent); font-weight: 700; }
+    .bottomTabActive { color: var(--accent); }
+
+    .bottomTabLabel {
+      font-size: 0.65rem;
+      font-weight: 500;
+    }
 
     .bottomAvatar {
       width: 28px;
