@@ -24,11 +24,13 @@ export default function SearchPage() {
 
   const debouncedQuery = useDebounce(query, 500)
 
-  const { data: releases, isLoading: releasesLoading } = useMBSearchReleases(debouncedQuery)
-  const { data: artists, isLoading: artistsLoading } = useMBSearchArtists(debouncedQuery)
+  const { data: releases, isLoading: releasesLoading, isError: releasesError, refetch: refetchReleases } = useMBSearchReleases(debouncedQuery)
+  const { data: artists, isLoading: artistsLoading, isError: artistsError, refetch: refetchArtists } = useMBSearchArtists(debouncedQuery)
   const mbImport = useMBImport()
 
   const isLoading = tab === 'albums' ? releasesLoading : artistsLoading
+  const isError = tab === 'albums' ? releasesError : artistsError
+  const refetch = tab === 'albums' ? refetchReleases : refetchArtists
   const hasQuery = debouncedQuery.trim().length > 0
 
   const handleAlbumClick = async (mbid: string) => {
@@ -101,6 +103,13 @@ export default function SearchPage() {
         <div className={styles.empty}>キーワードを入力して検索してください</div>
       ) : isLoading ? (
         <div className={styles.center}><div className="spinner" /></div>
+      ) : isError ? (
+        <div className={styles.empty}>
+          検索に失敗しました。
+          <button onClick={() => refetch()} style={{ marginLeft: '8px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+            もう一度試す
+          </button>
+        </div>
       ) : tab === 'albums' ? (
         !releases || releases.length === 0 ? (
           <div className={styles.empty}>「{debouncedQuery}」に一致するアルバムが見つかりません</div>
