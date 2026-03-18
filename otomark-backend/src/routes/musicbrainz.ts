@@ -8,7 +8,7 @@ export const musicbrainzRouter = new Hono()
 
 const MB_BASE = 'https://musicbrainz.org/ws/2'
 const MB_HEADERS = {
-  'User-Agent': 'Otomark/1.0 (contact@example.com)',
+  'User-Agent': 'Otomark/1.0 (zanon-dev@example.com)',
   'Accept': 'application/json',
 }
 
@@ -23,21 +23,61 @@ function toFullDate(date: string | null | undefined): string | null {
 // インメモリキャッシュ（TTL 5分）
 const cache = new Map<string, { data: unknown; expires: number }>()
 
-async function mbFetch(url: string, retry = 2): Promise<unknown> {
+// シリアルキュー: MusicBrainzへの同時リクエストを1本に制限し 1.1秒間隔を保証
+const MB_INTERVAL = 1100 // MusicBrainzの推奨は1req/sec
+let _mbChain: Promise<void> = Promise.resolve()
+let _mbLastAt = 0
+
+async function mbFetch(url: string): Promise<unknown> {
+  // キャッシュヒット: ネットワーク不要
   const cached = cache.get(url)
   if (cached && cached.expires > Date.now()) return cached.data
 
-  const res = await fetch(url, { headers: MB_HEADERS })
+  // キューに追加して順番に実行
+  let resolve!: (v: unknown) => void
+  let reject!: (e: unknown) => void
+  const promise = new Promise<unknown>((res, rej) => { resolve = res; reject = rej })
 
-  if (res.status === 429 && retry > 0) {
-    await new Promise(r => setTimeout(r, 1500))
-    return mbFetch(url, retry - 1)
-  }
+  _mbChain = _mbChain.then(async () => {
+    // 前回リクエストから最低 MB_INTERVAL ms 待機
+    const wait = MB_INTERVAL - (Date.now() - _mbLastAt)
+    if (wait > 0) await new Promise(r => setTimeout(r, wait))
+    _mbLastAt = Date.now()
 
-  if (!res.ok) throw new Error(`MusicBrainz API error: ${res.status}`)
-  const data = await res.json()
-  cache.set(url, { data, expires: Date.now() + 5 * 60 * 1000 })
-  return data
+    // リトライループ（429 に対して最大3回、指数バックオフ）
+    const maxAttempts = 3
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(url, { headers: MB_HEADERS })
+
+        if (res.status === 429) {
+          const backoff = 2000 * (attempt + 1) // 2s, 4s, 6s
+          console.warn(`[MusicBrainz] 429 rate limit, backoff ${backoff}ms (attempt ${attempt + 1}/${maxAttempts})`)
+          if (attempt < maxAttempts - 1) {
+            await new Promise(r => setTimeout(r, backoff))
+            _mbLastAt = Date.now()
+            continue
+          }
+          reject(new Error('MusicBrainz rate limit exceeded'))
+          return
+        }
+
+        if (!res.ok) {
+          reject(new Error(`MusicBrainz API error: ${res.status}`))
+          return
+        }
+
+        const data = await res.json()
+        cache.set(url, { data, expires: Date.now() + 5 * 60 * 1000 })
+        resolve(data)
+        return
+      } catch (e) {
+        if (attempt === maxAttempts - 1) reject(e)
+      }
+    }
+  }).catch(() => {}) // チェーンを止めない
+
+  return promise
 }
 
 // ===== GET /musicbrainz/search =====
@@ -133,7 +173,10 @@ musicbrainzRouter.post(
       const artistMbid = data['artist-credit']?.[0]?.artist?.id
       const artistName = data['artist-credit']?.[0]?.artist?.name ?? '不明'
       const releaseDate = toFullDate(data.date)
-      const coverUrl = `https://coverartarchive.org/release/${mbid}/front-250`
+      // cover-art-archive.front が true の場合のみ URL を設定（ない場合 CAA が 404 を返すため）
+      const coverUrl = data['cover-art-archive']?.front
+        ? `https://coverartarchive.org/release/${mbid}/front-250`
+        : null
 
       const result = await withTransaction(async (client) => {
         // Artist upsert
@@ -171,7 +214,8 @@ musicbrainzRouter.post(
                 artistId,
                 albumId,
                 track.length ? Math.round(track.length / 1000) : null,
-                track.number ? parseInt(track.number) : null,
+                // vinyl等で "A1","B2" のような非数値トラック番号を安全に処理
+                (() => { const n = parseInt(track.number ?? ''); return isNaN(n) ? null : n })(),
                 track.id,
               ]
             )

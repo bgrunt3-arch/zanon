@@ -168,7 +168,9 @@ export function Nav() {
                   role="button"
                   aria-expanded={dropdownOpen}
                 >
-                  {user?.display_name?.[0] ?? '?'}
+                  {user?.avatar_url
+                    ? <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                    : (user?.display_name?.[0] ?? '?')}
                 </div>
                 {dropdownOpen && (
                   <div className={styles.dropdown}>

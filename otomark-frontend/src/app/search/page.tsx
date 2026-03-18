@@ -21,17 +21,30 @@ export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<Tab>('albums')
   const [importingMbid, setImportingMbid] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
 
   const debouncedQuery = useDebounce(query, 500)
 
-  const { data: releases, isLoading: releasesLoading, isError: releasesError, refetch: refetchReleases } = useMBSearchReleases(debouncedQuery)
-  const { data: artists, isLoading: artistsLoading, isError: artistsError, refetch: refetchArtists } = useMBSearchArtists(debouncedQuery)
+  // MusicBrainzのレートリミット対策: アクティブなタブのクエリのみ発火する
+  const albumQuery = tab === 'albums' ? debouncedQuery : ''
+  const artistQuery = tab === 'artists' ? debouncedQuery : ''
+
+  const { data: releases, isLoading: releasesLoading, isError: releasesError, refetch: refetchReleases } = useMBSearchReleases(albumQuery)
+  const { data: artists, isLoading: artistsLoading, isError: artistsError, refetch: refetchArtists } = useMBSearchArtists(artistQuery)
   const mbImport = useMBImport()
 
   const isLoading = tab === 'albums' ? releasesLoading : artistsLoading
-  const isError = tab === 'albums' ? releasesError : artistsError
-  const refetch = tab === 'albums' ? refetchReleases : refetchArtists
-  const hasQuery = debouncedQuery.trim().length > 0
+  const isError   = tab === 'albums' ? releasesError   : artistsError
+  const refetch   = tab === 'albums' ? refetchReleases  : refetchArtists
+  const hasQuery  = debouncedQuery.trim().length > 0
+
+  const handleRetry = () => {
+    setIsRetrying(true)
+    setTimeout(() => {
+      refetch()
+      setIsRetrying(false)
+    }, 1000)
+  }
 
   const handleAlbumClick = async (mbid: string) => {
     setImportingMbid(mbid)
@@ -83,7 +96,7 @@ export default function SearchPage() {
           onClick={() => setTab('albums')}
         >
           💿 アルバム
-          {hasQuery && releases && (
+          {tab === 'albums' && hasQuery && releases && (
             <span className={styles.tabCount}>{releases.length}</span>
           )}
         </button>
@@ -92,7 +105,7 @@ export default function SearchPage() {
           onClick={() => setTab('artists')}
         >
           🎤 アーティスト
-          {hasQuery && artists && (
+          {tab === 'artists' && hasQuery && artists && (
             <span className={styles.tabCount}>{artists.length}</span>
           )}
         </button>
@@ -106,8 +119,12 @@ export default function SearchPage() {
       ) : isError ? (
         <div className={styles.empty}>
           検索に失敗しました。
-          <button onClick={() => refetch()} style={{ marginLeft: '8px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-            もう一度試す
+          <button
+            onClick={handleRetry}
+            disabled={isRetrying}
+            style={{ marginLeft: '8px', color: 'var(--accent)', background: 'none', border: 'none', cursor: isRetrying ? 'wait' : 'pointer', textDecoration: 'underline', opacity: isRetrying ? 0.5 : 1 }}
+          >
+            {isRetrying ? '待機中...' : 'もう一度試す'}
           </button>
         </div>
       ) : tab === 'albums' ? (

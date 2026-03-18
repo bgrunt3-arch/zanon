@@ -42,12 +42,16 @@ import {
   // =============================================
   // MusicBrainz 検索
   // =============================================
+  const MB_STALE = 5 * 60 * 1000   // 5分: この間は再フェッチしない
+  const MB_GC    = 10 * 60 * 1000  // 10分: キャッシュをメモリに保持
+
   export function useMBSearchReleases(q: string) {
     return useQuery({
       queryKey: ['mb', 'releases', q],
       queryFn: () => musicbrainzApi.searchReleases(q).then(r => r.data.results),
       enabled: q.trim().length > 0,
-      staleTime: 1000 * 60 * 5,
+      staleTime: MB_STALE,
+      gcTime: MB_GC,
     })
   }
 
@@ -56,9 +60,11 @@ import {
       queryKey: ['mb', 'artists', q],
       queryFn: () => musicbrainzApi.searchArtists(q).then(r => r.data.results),
       enabled: q.trim().length > 0,
-      staleTime: 1000 * 60 * 5,
+      staleTime: MB_STALE,
+      gcTime: MB_GC,
     })
   }
+
 
   export function useMBImport() {
     return useMutation({

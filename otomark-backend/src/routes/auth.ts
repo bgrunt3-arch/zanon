@@ -152,15 +152,17 @@ authRouter.get('/saved', authRequired, async (c) => {
 // PUT /auth/profile - プロフィール編集
 authRouter.put('/profile', authRequired, zValidator('json', z.object({
   display_name: z.string().min(1).max(50).optional(),
-  bio: z.string().max(200).optional().nullable(),
+  bio: z.string().max(300).optional().nullable(),
+  avatar_url: z.string().max(400000).optional().nullable(), // base64 or URL
 })), async (c) => {
   const { userId } = c.get('user')
-  const { display_name, bio } = c.req.valid('json')
+  const { display_name, bio, avatar_url } = c.req.valid('json')
 
   const sets: string[] = []
   const params: unknown[] = []
   if (display_name !== undefined) { params.push(display_name); sets.push(`display_name = $${params.length}`) }
   if (bio !== undefined) { params.push(bio); sets.push(`bio = $${params.length}`) }
+  if (avatar_url !== undefined) { params.push(avatar_url); sets.push(`avatar_url = $${params.length}`) }
   if (sets.length === 0) return c.json({ error: '更新する項目がありません' }, 400)
 
   params.push(userId)

@@ -31,7 +31,9 @@ export default function UserPage({ params }: { params: { username: string } }) {
     <div className={styles.page}>
       <header className={styles.profileHeader}>
         <div className={styles.avatar}>
-          {user.display_name?.[0] ?? '?'}
+          {user.avatar_url
+            ? <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+            : (user.display_name?.[0] ?? '?')}
         </div>
         <div className={styles.profileInfo}>
           <div className={styles.nameRow}>
@@ -118,6 +120,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
         onClose={() => setEditModalOpen(false)}
         initialDisplayName={user.display_name}
         initialBio={user.bio ?? ''}
+        initialAvatarUrl={user.avatar_url}
       />
     </div>
   )

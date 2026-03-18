@@ -138,7 +138,7 @@ export const authApi = {
   me: () =>
     apiClient.get<User>('/auth/me'),
 
-  updateProfile: (data: { display_name?: string; bio?: string }) =>
+  updateProfile: (data: { display_name?: string; bio?: string; avatar_url?: string | null }) =>
     apiClient.put<User>('/auth/profile', data),
 }
 
