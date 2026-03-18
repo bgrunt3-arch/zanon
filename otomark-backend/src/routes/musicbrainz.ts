@@ -23,11 +23,17 @@ function toFullDate(date: string | null | undefined): string | null {
 // インメモリキャッシュ（TTL 5分）
 const cache = new Map<string, { data: unknown; expires: number }>()
 
-async function mbFetch(url: string): Promise<unknown> {
+async function mbFetch(url: string, retry = 2): Promise<unknown> {
   const cached = cache.get(url)
   if (cached && cached.expires > Date.now()) return cached.data
 
   const res = await fetch(url, { headers: MB_HEADERS })
+
+  if (res.status === 429 && retry > 0) {
+    await new Promise(r => setTimeout(r, 1500))
+    return mbFetch(url, retry - 1)
+  }
+
   if (!res.ok) throw new Error(`MusicBrainz API error: ${res.status}`)
   const data = await res.json()
   cache.set(url, { data, expires: Date.now() + 5 * 60 * 1000 })
