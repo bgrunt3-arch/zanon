@@ -140,6 +140,9 @@ export const authApi = {
 
   updateProfile: (data: { display_name?: string; bio?: string; avatar_url?: string | null }) =>
     apiClient.put<User>('/auth/profile', data),
+
+  deleteAccount: () =>
+    apiClient.delete('/auth/account'),
 }
 
 // --- アルバム ---

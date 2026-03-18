@@ -127,10 +127,11 @@ export function Nav() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
 
   const bottomTabs = [
-    { href: '/',        label: 'ホーム',     icon: '🏠' },
-    { href: '/ranking', label: 'ランキング', icon: '📊' },
+    { href: '/',          label: 'ホーム',     icon: '🏠' },
+    { href: '/ranking',   label: 'ランキング', icon: '📊' },
     null,
-    { href: '/mypage',  label: 'マイページ', icon: '👤' },
+    { href: '/mypage',    label: 'マイページ', icon: '👤' },
+    { href: '/settings',  label: '設定',       icon: '⚙️' },
   ]
 
   // PC用タブ（ホーム・ランキング・検索）
