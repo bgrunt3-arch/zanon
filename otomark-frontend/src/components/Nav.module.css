@@ -275,9 +275,8 @@
       display: none;
     }
 
-    /* ヘッダー右側のアバターとログインボタンを隠す */
+    /* ヘッダー右側のアバターとマークボタンを隠す */
     .avatarMenu,
-    .btnOutline,
     .btnPost {
       display: none;
     }
