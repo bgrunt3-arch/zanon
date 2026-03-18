@@ -46,7 +46,7 @@ export default function RegisterPage() {
       <div className={styles.card}>
         <div className={styles.logo}>
           <span className={styles.logoDot} />
-          Otomark
+          ZanoN
         </div>
         <h1 className={styles.title}>新規登録</h1>
 
