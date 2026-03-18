@@ -149,6 +149,13 @@ authRouter.get('/saved', authRequired, async (c) => {
   return c.json({ reviews })
 })
 
+// ===== DELETE /auth/account - アカウント削除 =====
+authRouter.delete('/account', authRequired, async (c) => {
+  const { userId } = c.get('user')
+  await db.query('DELETE FROM users WHERE id = $1', [userId])
+  return c.json({ message: 'アカウントを削除しました' })
+})
+
 // PUT /auth/profile - プロフィール編集
 authRouter.put('/profile', authRequired, zValidator('json', z.object({
   display_name: z.string().min(1).max(50).optional(),
