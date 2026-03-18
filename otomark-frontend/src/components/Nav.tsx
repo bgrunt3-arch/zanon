@@ -127,38 +127,10 @@ export function Nav() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
 
   const bottomTabs = [
-    {
-      href: '/',
-      label: 'ホーム',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-          <polyline points="9 21 9 12 15 12 15 21"/>
-        </svg>
-      ),
-    },
-    {
-      href: '/ranking',
-      label: 'ランキング',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="16" width="4" height="6" rx="1"/>
-          <rect x="9" y="10" width="4" height="12" rx="1"/>
-          <rect x="16" y="4" width="4" height="18" rx="1"/>
-        </svg>
-      ),
-    },
-    null, // 中央マークボタン
-    {
-      href: '/mypage',
-      label: 'マイページ',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-        </svg>
-      ),
-    },
+    { href: '/',        label: 'ホーム',     icon: '🏠' },
+    { href: '/ranking', label: 'ランキング', icon: '📊' },
+    null,
+    { href: '/mypage',  label: 'マイページ', icon: '👤' },
   ]
 
   // PC用タブ（ホーム・ランキング・検索）
@@ -231,33 +203,33 @@ export function Nav() {
       <MarkModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       {/* スマホ用ボトムタブバー */}
-      <nav className={styles.bottomNav}>
+      <div className={styles.bottomNav}>
         <div className={styles.bottomNavInner}>
-          {bottomTabs.map((t, i) =>
+          {bottomTabs.map((t) =>
             t === null ? (
               <button
                 key="mark"
-                className={styles.bottomMarkBtn}
+                className={`${styles.bottomTab} ${styles.markBtn}`}
                 onClick={() => setModalOpen(true)}
                 aria-label="マークを追加"
               >
-                <span className={styles.bottomMarkIcon}>＋</span>
-                <span className={styles.bottomTabLabel}>マーク</span>
+                <span className={styles.bottomTabIcon}>＋</span>
+                <span>マーク</span>
               </button>
             ) : (
               <Link
                 key={t.href}
                 href={t.href}
                 onClick={scrollTop}
-                className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
+                className={`${styles.bottomTab} ${pathname === t.href ? styles.active : ''}`}
               >
-                {t.icon}
-                <span className={styles.bottomTabLabel}>{t.label}</span>
+                <span className={styles.bottomTabIcon}>{t.icon}</span>
+                <span>{t.label}</span>
               </Link>
             )
           )}
         </div>
-      </nav>
+      </div>
     </>
   )
 }

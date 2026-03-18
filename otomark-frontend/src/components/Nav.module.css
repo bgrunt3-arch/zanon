@@ -268,86 +268,71 @@
   /* ボトムタブバー（スマホのみ表示） */
   .bottomNav {
     display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(13, 13, 20, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottomNavInner {
+    display: flex;
+    height: 60px;
+  }
+
+  .bottomTab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    font-size: 0.6rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 0;
+    text-decoration: none;
+  }
+  .bottomTab.active { color: var(--accent); }
+
+  .bottomTabIcon {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .markBtn .bottomTabIcon {
+    width: 46px;
+    height: 46px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-top: -18px;
+    box-shadow: 0 4px 20px rgba(200, 255, 62, 0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .markBtn { color: var(--text2); }
+  .markBtn:active .bottomTabIcon {
+    transform: scale(0.93);
+    box-shadow: 0 2px 10px rgba(200, 255, 62, 0.25);
   }
 
   @media (max-width: 640px) {
     .tabs { display: none; }
     .btnPost { display: none; }
-
     .nav { padding: 0 1.2rem; }
-
-    .bottomNav {
-      display: block;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 200;
-      background: rgba(13, 13, 20, 0.97);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    .bottomNavInner {
-      display: flex;
-      height: 60px;
-    }
-
-    .bottomTab {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      color: var(--text3);
-      font-size: 0.6rem;
-      transition: color 0.2s;
-      padding: 0;
-    }
-    .bottomTab:hover { color: var(--text2); }
-    .bottomTabActive { color: var(--accent); }
-
-    .bottomTabLabel {
-      font-size: 0.6rem;
-      font-weight: 500;
-      line-height: 1;
-    }
-
-    .bottomMarkBtn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      background: none;
-      border: none;
-      color: var(--text2);
-      font-size: 0.6rem;
-      padding: 0;
-      cursor: pointer;
-    }
-
-    .bottomMarkIcon {
-      width: 46px;
-      height: 46px;
-      background: var(--accent);
-      color: #0a0a0f;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-top: -18px;
-      box-shadow: 0 4px 20px rgba(200, 255, 62, 0.35);
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .bottomMarkBtn:active .bottomMarkIcon {
-      transform: scale(0.93);
-      box-shadow: 0 2px 10px rgba(200, 255, 62, 0.25);
-    }
+    .bottomNav { display: block; }
   }
