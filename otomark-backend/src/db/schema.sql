@@ -184,3 +184,28 @@ CREATE OR REPLACE TRIGGER reviews_updated_at
 CREATE OR REPLACE TRIGGER users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- =============================================
+-- MusicBrainz キャッシュテーブル
+-- =============================================
+CREATE TABLE IF NOT EXISTS music_cache (
+  mbid            VARCHAR(36)  PRIMARY KEY,
+  entity_type     VARCHAR(20)  NOT NULL CHECK (entity_type IN ('artist', 'release', 'release-group', 'recording')),
+  name            VARCHAR(255) NOT NULL,
+  image_url       TEXT,
+  data            JSONB,
+  last_fetched_at TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_music_cache_entity_type ON music_cache(entity_type);
+
+-- =============================================
+-- ユーザーブックマークテーブル
+-- =============================================
+CREATE TABLE IF NOT EXISTS user_bookmarks (
+  id         SERIAL    PRIMARY KEY,
+  user_id    INT       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  mbid       VARCHAR(36) NOT NULL REFERENCES music_cache(mbid) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, mbid)
+);
+CREATE INDEX IF NOT EXISTS idx_user_bookmarks_user_id ON user_bookmarks(user_id);
