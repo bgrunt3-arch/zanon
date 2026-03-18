@@ -128,7 +128,7 @@ export function Nav() {
 
   const bottomTabs = [
     { href: '/',          label: 'ホーム',     icon: '🏠' },
-    { href: '/ranking',   label: 'ランキング', icon: '📊' },
+    { href: '/search',    label: '検索',       icon: '🔍' },
     null,
     { href: '/mypage',    label: 'マイページ', icon: '👤' },
     { href: '/settings',  label: '設定',       icon: '⚙️' },
