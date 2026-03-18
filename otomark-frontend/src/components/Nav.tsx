@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@/lib/store'
 import { useNotifications, useReadAllNotifications } from '@/lib/hooks'
 import { MarkModal } from './MarkModal'
@@ -111,6 +111,18 @@ export function Nav() {
   const pathname    = usePathname()
   const { isLoggedIn, user, logout } = useAuthStore()
   const [modalOpen, setModalOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const avatarRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const tabs = [
     { href: '/',        label: 'ホーム' },
@@ -149,15 +161,22 @@ export function Nav() {
               <button className={styles.btnPost} onClick={() => setModalOpen(true)}>
                 ＋ マーク
               </button>
-              <div className={styles.avatarMenu}>
-                <div className={styles.avatar}>
+              <div className={styles.avatarMenu} ref={avatarRef}>
+                <div
+                  className={styles.avatar}
+                  onClick={() => setDropdownOpen(prev => !prev)}
+                  role="button"
+                  aria-expanded={dropdownOpen}
+                >
                   {user?.display_name?.[0] ?? '?'}
                 </div>
-                <div className={styles.dropdown}>
-                  <Link href="/mypage" className={styles.dropItem}>マイページ</Link>
-                  <Link href="/saved" className={styles.dropItem}>保存済み</Link>
-                  <button className={styles.dropItem} onClick={logout}>ログアウト</button>
-                </div>
+                {dropdownOpen && (
+                  <div className={styles.dropdown}>
+                    <Link href="/mypage" className={styles.dropItem} onClick={() => setDropdownOpen(false)}>マイページ</Link>
+                    <Link href="/saved" className={styles.dropItem} onClick={() => setDropdownOpen(false)}>保存済み</Link>
+                    <button className={styles.dropItem} onClick={() => { setDropdownOpen(false); logout() }}>ログアウト</button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
