@@ -70,8 +70,8 @@ input, textarea { font-family: inherit; }
 
 /* スマホ：ボトムタブ分の余白 */
 @media (max-width: 640px) {
-  main {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  body {
+    padding-bottom: 70px;
   }
 }
 

@@ -124,12 +124,14 @@ export function Nav() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const tabs = [
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+
+  const bottomTabs = [
     {
       href: '/',
       label: 'ホーム',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
           <polyline points="9 21 9 12 15 12 15 21"/>
         </svg>
@@ -139,24 +141,31 @@ export function Nav() {
       href: '/ranking',
       label: 'ランキング',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="16" width="4" height="6" rx="1"/>
           <rect x="9" y="10" width="4" height="12" rx="1"/>
           <rect x="16" y="4" width="4" height="18" rx="1"/>
         </svg>
       ),
     },
-    null, // 中央のマークボタン用スペース
+    null, // 中央マークボタン
     {
-      href: '/search',
-      label: '検索',
+      href: '/mypage',
+      label: 'マイページ',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="7"/>
-          <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
         </svg>
       ),
     },
+  ]
+
+  // PC用タブ（ホーム・ランキング・検索）
+  const headerTabs = [
+    { href: '/',        label: 'ホーム' },
+    { href: '/ranking', label: 'ランキング' },
+    { href: '/search',  label: '検索' },
   ]
 
   return (
@@ -170,13 +179,13 @@ export function Nav() {
 
         {/* タブナビ */}
         <div className={styles.tabs}>
-          {tabs.filter(t => t !== null).map(t => (
+          {headerTabs.map(t => (
             <Link
-              key={t!.href}
-              href={t!.href}
-              className={`${styles.tab} ${pathname === t!.href ? styles.active : ''}`}
+              key={t.href}
+              href={t.href}
+              className={`${styles.tab} ${pathname === t.href ? styles.active : ''}`}
             >
-              {t!.label}
+              {t.label}
             </Link>
           ))}
         </div>
@@ -223,30 +232,31 @@ export function Nav() {
 
       {/* スマホ用ボトムタブバー */}
       <nav className={styles.bottomNav}>
-        {tabs.map((t, i) =>
-          t === null ? (
-            <button
-              key="mark"
-              className={styles.bottomMarkBtn}
-              onClick={() => setModalOpen(true)}
-              aria-label="マークを追加"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-          ) : (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
-            >
-              {t.icon}
-              <span className={styles.bottomTabLabel}>{t.label}</span>
-            </Link>
-          )
-        )}
+        <div className={styles.bottomNavInner}>
+          {bottomTabs.map((t, i) =>
+            t === null ? (
+              <button
+                key="mark"
+                className={styles.bottomMarkBtn}
+                onClick={() => setModalOpen(true)}
+                aria-label="マークを追加"
+              >
+                <span className={styles.bottomMarkIcon}>＋</span>
+                <span className={styles.bottomTabLabel}>マーク</span>
+              </button>
+            ) : (
+              <Link
+                key={t.href}
+                href={t.href}
+                onClick={scrollTop}
+                className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
+              >
+                {t.icon}
+                <span className={styles.bottomTabLabel}>{t.label}</span>
+              </Link>
+            )
+          )}
+        </div>
       </nav>
     </>
   )
