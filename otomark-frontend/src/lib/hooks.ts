@@ -73,6 +73,17 @@ import {
     })
   }
 
+  export function useSyncArtistDiscography() {
+    const qc = useQueryClient()
+    return useMutation({
+      mutationFn: (artistId: number) =>
+        musicbrainzApi.syncArtistDiscography(artistId).then(r => r.data),
+      onSuccess: (_, artistId) => {
+        qc.invalidateQueries({ queryKey: queryKeys.artist(artistId) })
+      },
+    })
+  }
+
   // =============================================
   // アルバム
   // =============================================

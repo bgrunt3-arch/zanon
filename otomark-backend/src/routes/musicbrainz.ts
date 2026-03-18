@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { queryOne, withTransaction } from '../db/client.ts'
+import { queryOne, queryMany, withTransaction } from '../db/client.ts'
 import { authRequired } from '../middleware/auth.ts'
 
 export const musicbrainzRouter = new Hono()
@@ -290,3 +290,57 @@ musicbrainzRouter.post(
     }
   }
 )
+
+// ===== POST /musicbrainz/sync-artist/:artistId =====
+// アーティストのディスコグラフィーをMusicBrainzから一括取得・インポート
+musicbrainzRouter.post('/sync-artist/:artistId', authRequired, async (c) => {
+  const artistId = Number(c.req.param('artistId'))
+
+  const artist = await queryOne<{ id: number; musicbrainz_id: string | null }>(
+    'SELECT id, musicbrainz_id FROM artists WHERE id = $1',
+    [artistId]
+  )
+  if (!artist) return c.json({ error: 'アーティストが見つかりません' }, 404)
+  if (!artist.musicbrainz_id) return c.json({ error: 'MusicBrainz IDが設定されていません' }, 400)
+
+  // MusicBrainzからリリースグループを全件取得
+  const data = await mbFetch(
+    `${MB_BASE}/release-group?artist=${artist.musicbrainz_id}&limit=100&fmt=json`
+  ) as any
+
+  const releaseGroups: any[] = data['release-groups'] ?? []
+
+  // 各リリースグループをアルバムとしてupsert
+  for (const rg of releaseGroups) {
+    await queryOne(
+      `INSERT INTO albums (title, artist_id, release_date, cover_url, musicbrainz_id)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (musicbrainz_id) DO UPDATE SET
+         title      = EXCLUDED.title,
+         cover_url  = COALESCE(albums.cover_url, EXCLUDED.cover_url)
+       RETURNING id`,
+      [
+        rg.title,
+        artistId,
+        toFullDate(rg['first-release-date']),
+        `https://coverartarchive.org/release-group/${rg.id}/front-250`,
+        rg.id,
+      ]
+    )
+  }
+
+  // 更新後のアルバム一覧を返す
+  const albums = await queryMany(
+    `SELECT a.id, a.title, a.cover_url, a.release_date,
+            ROUND(AVG(m.score)::numeric, 2) AS avg_score,
+            COUNT(DISTINCT m.id) AS marks_count
+     FROM albums a
+     LEFT JOIN marks m ON m.album_id = a.id AND m.score IS NOT NULL
+     WHERE a.artist_id = $1
+     GROUP BY a.id
+     ORDER BY a.release_date DESC NULLS LAST`,
+    [artistId]
+  )
+
+  return c.json({ albums, imported: releaseGroups.length })
+})

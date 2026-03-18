@@ -338,4 +338,7 @@ export const musicbrainzApi = {
 
   import: (data: { type: 'release' | 'artist' | 'recording'; mbid: string }) =>
     apiClient.post<MBImportResult>('/musicbrainz/import', data),
+
+  syncArtistDiscography: (artistId: number) =>
+    apiClient.post<{ albums: Album[]; imported: number }>(`/musicbrainz/sync-artist/${artistId}`),
 }
