@@ -8,10 +8,11 @@ import { useAuthStore } from '@/lib/store'
 import { musicbrainzApi, type MBReleaseResult, type MBArtistResult, type MBRecordingResult } from '@/lib/api'
 import styles from './MarkModal.module.css'
 
-type Props = { open: boolean; onClose: () => void }
+type InitialAlbum = { albumId: number; title: string; artist: string; coverUrl?: string | null }
+type Props = { open: boolean; onClose: () => void; initialAlbum?: InitialAlbum }
 type TargetType = 'album' | 'track' | 'artist'
 
-export function MarkModal({ open, onClose }: Props) {
+export function MarkModal({ open, onClose, initialAlbum }: Props) {
   const router = useRouter()
   const qc = useQueryClient()
   const { isLoggedIn } = useAuthStore()
@@ -61,9 +62,21 @@ export function MarkModal({ open, onClose }: Props) {
 
   const handleSubmit = async () => {
     if (!isLoggedIn) { router.push('/login'); return }
-    if (!selected) return
 
     try {
+      if (initialAlbum) {
+        // アルバム詳細から：インポート不要、DB IDを直接使用
+        await createMark.mutateAsync({
+          album_id: initialAlbum.albumId,
+          score:  score > 0 ? score : undefined,
+          review: review.trim() || undefined,
+        })
+        setScore(0); setReview('')
+        onClose()
+        return
+      }
+
+      if (!selected) return
       const imported = await importMutation.mutateAsync(selected.mbid)
       await createMark.mutateAsync({
         album_id:  type === 'album'  ? imported.albumId  : undefined,
@@ -72,7 +85,6 @@ export function MarkModal({ open, onClose }: Props) {
         score:  score > 0 ? score : undefined,
         review: review.trim() || undefined,
       })
-      // リセット
       setSelected(null); setQuery(''); setDebouncedQuery(''); setScore(0); setReview('')
       onClose()
     } catch (e) {
@@ -88,6 +100,7 @@ export function MarkModal({ open, onClose }: Props) {
   }
 
   const isPending = importMutation.isPending || createMark.isPending
+  const canSubmit = initialAlbum ? true : !!selected
   const results = searchData ?? []
 
   return (
@@ -95,6 +108,23 @@ export function MarkModal({ open, onClose }: Props) {
       <div className={styles.modal}>
         <div className={styles.title}>🎵 作品をマーク</div>
 
+        {/* initialAlbum が指定された場合はアルバムカードを固定表示 */}
+        {initialAlbum ? (
+          <div className={styles.group}>
+            <div className={styles.selectedCard}>
+              <div className={styles.resultCover}>
+                {initialAlbum.coverUrl
+                  ? <img src={initialAlbum.coverUrl} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  : '💿'}
+              </div>
+              <div className={styles.resultInfo}>
+                <div className={styles.resultTitle}>{initialAlbum.title}</div>
+                <div className={styles.resultMeta}>{initialAlbum.artist}</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* 種類 */}
         <div className={styles.group}>
           <label className={styles.label}>種類</label>
@@ -188,6 +218,8 @@ export function MarkModal({ open, onClose }: Props) {
             </div>
           )}
         </div>
+          </>
+        )}
 
         {/* 評価 */}
         <div className={styles.group}>
@@ -223,7 +255,7 @@ export function MarkModal({ open, onClose }: Props) {
           <button
             className={styles.btnSubmit}
             onClick={handleSubmit}
-            disabled={!selected || isPending}
+            disabled={!canSubmit || isPending}
           >
             {isPending ? <span className="spinner" /> : 'マークする'}
           </button>

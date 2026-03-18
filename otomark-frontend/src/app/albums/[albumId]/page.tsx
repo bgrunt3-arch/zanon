@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAlbum, useAddWant, useRemoveWant } from '@/lib/hooks'
 import { useAuthStore } from '@/lib/store'
 import { ReviewCard } from '@/components/ReviewCard'
+import { MarkModal } from '@/components/MarkModal'
 import { toast } from '@/lib/toast'
 import styles from './page.module.css'
 
@@ -22,6 +23,7 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
   const removeWant = useRemoveWant()
   const [wantId, setWantId]     = useState<number | null>(null)
   const [isWanted, setIsWanted] = useState(false)
+  const [markOpen, setMarkOpen] = useState(false)
 
   if (isLoading) return <div className={styles.center}>読み込み中...</div>
   if (!album) return <div className={styles.center}>アルバムが見つかりません</div>
@@ -90,6 +92,15 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
             </div>
 
             <button
+              className={styles.markBtn}
+              onClick={() => {
+                if (!isLoggedIn) { toast.info('ログインが必要です'); return }
+                setMarkOpen(true)
+              }}
+            >
+              ＋ マーク
+            </button>
+            <button
               className={`${styles.wantBtn} ${isWanted ? styles.wantBtnActive : ''}`}
               onClick={handleWant}
               disabled={addWant.isPending || removeWant.isPending}
@@ -118,6 +129,12 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
           </ol>
         </section>
       )}
+
+      <MarkModal
+        open={markOpen}
+        onClose={() => setMarkOpen(false)}
+        initialAlbum={{ albumId, title: album.title, artist: album.artist_name ?? '', coverUrl: album.cover_url }}
+      />
 
       {/* レビュー */}
       <section className={styles.section}>
