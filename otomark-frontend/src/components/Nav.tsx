@@ -146,6 +146,7 @@ export function Nav() {
         </svg>
       ),
     },
+    null, // 中央のマークボタン用スペース
     {
       href: '/search',
       label: '検索',
@@ -169,13 +170,13 @@ export function Nav() {
 
         {/* タブナビ */}
         <div className={styles.tabs}>
-          {tabs.map(t => (
+          {tabs.filter(t => t !== null).map(t => (
             <Link
-              key={t.href}
-              href={t.href}
-              className={`${styles.tab} ${pathname === t.href ? styles.active : ''}`}
+              key={t!.href}
+              href={t!.href}
+              className={`${styles.tab} ${pathname === t!.href ? styles.active : ''}`}
             >
-              {t.label}
+              {t!.label}
             </Link>
           ))}
         </div>
@@ -222,16 +223,30 @@ export function Nav() {
 
       {/* スマホ用ボトムタブバー */}
       <nav className={styles.bottomNav}>
-        {tabs.map(t => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
-          >
-            {t.icon}
-            <span className={styles.bottomTabLabel}>{t.label}</span>
-          </Link>
-        ))}
+        {tabs.map((t, i) =>
+          t === null ? (
+            <button
+              key="mark"
+              className={styles.bottomMarkBtn}
+              onClick={() => setModalOpen(true)}
+              aria-label="マークを追加"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          ) : (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
+            >
+              {t.icon}
+              <span className={styles.bottomTabLabel}>{t.label}</span>
+            </Link>
+          )
+        )}
       </nav>
     </>
   )
