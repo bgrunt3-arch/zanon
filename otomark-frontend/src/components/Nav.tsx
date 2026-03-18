@@ -232,19 +232,6 @@ export function Nav() {
             <span className={styles.bottomTabLabel}>{t.label}</span>
           </Link>
         ))}
-        {isLoggedIn ? (
-          <Link
-            href="/mypage"
-            className={`${styles.bottomTab} ${pathname === '/mypage' ? styles.bottomTabActive : ''}`}
-          >
-            <span className={styles.bottomAvatar}>
-              {user?.avatar_url
-                ? <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                : (user?.display_name?.[0] ?? '?')}
-            </span>
-            <span className={styles.bottomTabLabel}>マイページ</span>
-          </Link>
-        ) : null}
       </nav>
     </>
   )
