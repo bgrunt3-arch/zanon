@@ -191,6 +191,35 @@ export function Nav() {
       </nav>
 
       <MarkModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      {/* スマホ用ボトムタブバー */}
+      <nav className={styles.bottomNav}>
+        {tabs.map(t => (
+          <Link
+            key={t.href}
+            href={t.href}
+            className={`${styles.bottomTab} ${pathname === t.href ? styles.bottomTabActive : ''}`}
+          >
+            {t.label}
+          </Link>
+        ))}
+        {isLoggedIn ? (
+          <Link
+            href="/mypage"
+            className={`${styles.bottomTab} ${pathname === '/mypage' ? styles.bottomTabActive : ''}`}
+          >
+            <span className={styles.bottomAvatar}>
+              {user?.avatar_url
+                ? <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                : (user?.display_name?.[0] ?? '?')}
+            </span>
+          </Link>
+        ) : (
+          <Link href="/login" className={`${styles.bottomTab} ${pathname === '/login' ? styles.bottomTabActive : ''}`}>
+            ログイン
+          </Link>
+        )}
+      </nav>
     </>
   )
 }

@@ -68,6 +68,13 @@ input, textarea { font-family: inherit; }
 
 .animate-fade-up { animation: fadeUp 0.3s ease both; }
 
+/* スマホ：ボトムタブ分の余白 */
+@media (max-width: 640px) {
+  main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
 /* ローディングスピナー */
 .spinner {
   width: 20px; height: 20px;
