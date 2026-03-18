@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useUser, useUserReviews, useUserMarks, useFollow, useMe, useDeleteMark } from '@/lib/hooks'
 import { ReviewCard } from '@/components/ReviewCard'
 import { ProfileEditModal } from '@/components/ProfileEditModal'
@@ -59,28 +60,28 @@ export default function UserPage({ params }: { params: { username: string } }) {
           <div className={styles.handle}>@{user.username}</div>
           {user.bio && <p className={styles.bio}>{user.bio}</p>}
           <div className={styles.stats}>
-            <div className={styles.stat}>
+            <Link href={`/users/${username}#marks`} className={styles.stat}>
               <span className={styles.statNum}>{user.marks_count ?? 0}</span>
               <span className={styles.statLabel}>マーク</span>
-            </div>
-            <div className={styles.stat}>
+            </Link>
+            <Link href={`/users/${username}#reviews`} className={styles.stat}>
               <span className={styles.statNum}>{user.reviews_count ?? 0}</span>
               <span className={styles.statLabel}>レビュー</span>
-            </div>
-            <div className={styles.stat}>
+            </Link>
+            <Link href={`/users/${username}/following`} className={styles.stat}>
               <span className={styles.statNum}>{user.following_count ?? 0}</span>
               <span className={styles.statLabel}>フォロー中</span>
-            </div>
-            <div className={styles.stat}>
+            </Link>
+            <Link href={`/users/${username}/followers`} className={styles.stat}>
               <span className={styles.statNum}>{user.followers_count ?? 0}</span>
               <span className={styles.statLabel}>フォロワー</span>
-            </div>
+            </Link>
           </div>
         </div>
       </header>
 
       {/* 聴いた作品 */}
-      <section className={styles.section}>
+      <section id="marks" className={styles.section}>
         <div className={styles.sectionLabel}>Listened</div>
         <h2 className={styles.sectionTitle}>聴いた作品</h2>
         {marks.length === 0 ? (
@@ -111,7 +112,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
       </section>
 
       {/* レビュー */}
-      <section className={styles.section}>
+      <section id="reviews" className={styles.section}>
         <div className={styles.sectionLabel}>Reviews</div>
         <h2 className={styles.sectionTitle}>レビュー</h2>
         {reviews.length === 0 ? (

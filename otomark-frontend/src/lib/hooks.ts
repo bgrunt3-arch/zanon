@@ -372,6 +372,22 @@ import {
     })
   }
 
+  // フォロワー一覧
+  export function useFollowers(username: string) {
+    return useQuery({
+      queryKey: ['followers', username],
+      queryFn: () => usersApi.followers(username).then(r => r.data.followers),
+    })
+  }
+
+  // フォロー中一覧
+  export function useFollowing(username: string) {
+    return useQuery({
+      queryKey: ['following', username],
+      queryFn: () => usersApi.following(username).then(r => r.data.following),
+    })
+  }
+
   // フォロー / アンフォロー
   export function useFollow() {
     const qc = useQueryClient()
