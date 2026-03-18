@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className={styles.card}>
         <div className={styles.logo}>
           <span className={styles.logoDot} />
-          Otomark
+          ZanoN
         </div>
         <h1 className={styles.title}>ログイン</h1>
 

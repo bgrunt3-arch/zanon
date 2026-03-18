@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useAlbums, useArtists } from '@/lib/hooks'
+import { useRouter } from 'next/navigation'
+import { useMBSearchReleases, useMBSearchArtists, useMBImport } from '@/lib/hooks'
 import styles from './page.module.css'
 
 type Tab = 'albums' | 'artists'
@@ -17,23 +17,39 @@ function useDebounce(value: string, delay: number) {
 }
 
 export default function SearchPage() {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<Tab>('albums')
+  const [importingMbid, setImportingMbid] = useState<string | null>(null)
 
   const debouncedQuery = useDebounce(query, 500)
 
-  const { data: albumsData, isLoading: albumsLoading } = useAlbums(
-    debouncedQuery ? { q: debouncedQuery } : undefined
-  )
-  const { data: artistsData, isLoading: artistsLoading } = useArtists(
-    debouncedQuery ? { q: debouncedQuery } : undefined
-  )
+  const { data: releases, isLoading: releasesLoading } = useMBSearchReleases(debouncedQuery)
+  const { data: artists, isLoading: artistsLoading } = useMBSearchArtists(debouncedQuery)
+  const mbImport = useMBImport()
 
-  const albums = albumsData?.albums ?? []
-  const artists = artistsData?.artists ?? []
-
-  const isLoading = tab === 'albums' ? albumsLoading : artistsLoading
+  const isLoading = tab === 'albums' ? releasesLoading : artistsLoading
   const hasQuery = debouncedQuery.trim().length > 0
+
+  const handleAlbumClick = async (mbid: string) => {
+    setImportingMbid(mbid)
+    try {
+      const result = await mbImport.mutateAsync({ type: 'release', mbid })
+      if (result.albumId) router.push(`/albums/${result.albumId}`)
+    } finally {
+      setImportingMbid(null)
+    }
+  }
+
+  const handleArtistClick = async (mbid: string) => {
+    setImportingMbid(mbid)
+    try {
+      const result = await mbImport.mutateAsync({ type: 'artist', mbid })
+      if (result.artistId) router.push(`/artists/${result.artistId}`)
+    } finally {
+      setImportingMbid(null)
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -65,8 +81,8 @@ export default function SearchPage() {
           onClick={() => setTab('albums')}
         >
           💿 アルバム
-          {hasQuery && albumsData && (
-            <span className={styles.tabCount}>{albums.length}</span>
+          {hasQuery && releases && (
+            <span className={styles.tabCount}>{releases.length}</span>
           )}
         </button>
         <button
@@ -74,7 +90,7 @@ export default function SearchPage() {
           onClick={() => setTab('artists')}
         >
           🎤 アーティスト
-          {hasQuery && artistsData && (
+          {hasQuery && artists && (
             <span className={styles.tabCount}>{artists.length}</span>
           )}
         </button>
@@ -86,51 +102,67 @@ export default function SearchPage() {
       ) : isLoading ? (
         <div className={styles.center}><div className="spinner" /></div>
       ) : tab === 'albums' ? (
-        albums.length === 0 ? (
+        !releases || releases.length === 0 ? (
           <div className={styles.empty}>「{debouncedQuery}」に一致するアルバムが見つかりません</div>
         ) : (
           <div className={styles.albumGrid}>
-            {albums.map(album => (
-              <Link key={album.id} href={`/albums/${album.id}`} className={styles.albumCard}>
+            {releases.map(r => (
+              <button
+                key={r.mbid}
+                className={styles.albumCard}
+                onClick={() => handleAlbumClick(r.mbid)}
+                disabled={importingMbid !== null}
+                style={{ textAlign: 'left', background: 'none', border: 'none', cursor: importingMbid ? 'wait' : 'pointer', width: '100%' }}
+              >
                 <div className={styles.albumCover}>
-                  {album.cover_url
-                    ? <img src={album.cover_url} alt={album.title} className={styles.coverImg} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                    : <span className={styles.coverEmoji}>💿</span>}
-                </div>
-                <div className={styles.albumInfo}>
-                  <div className={styles.albumTitle}>{album.title}</div>
-                  <div className={styles.albumArtist}>{album.artist_name}</div>
-                  {album.avg_score && (
-                    <div className={styles.albumScore}>{Number(album.avg_score).toFixed(1)} ★</div>
+                  <img
+                    src={r.coverUrl}
+                    alt={r.title}
+                    className={styles.coverImg}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                  {importingMbid === r.mbid && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '8px' }}>
+                      <div className="spinner" />
+                    </div>
                   )}
                 </div>
-              </Link>
+                <div className={styles.albumInfo}>
+                  <div className={styles.albumTitle}>{r.title}</div>
+                  <div className={styles.albumArtist}>{r.artist}</div>
+                  {r.date && <div className={styles.albumScore}>{r.date.slice(0, 4)}</div>}
+                </div>
+              </button>
             ))}
           </div>
         )
       ) : (
-        artists.length === 0 ? (
+        !artists || artists.length === 0 ? (
           <div className={styles.empty}>「{debouncedQuery}」に一致するアーティストが見つかりません</div>
         ) : (
           <div className={styles.artistList}>
-            {artists.map(artist => (
-              <Link key={artist.id} href={`/artists/${artist.id}`} className={styles.artistItem}>
+            {artists.map(a => (
+              <button
+                key={a.mbid}
+                className={styles.artistItem}
+                onClick={() => handleArtistClick(a.mbid)}
+                disabled={importingMbid !== null}
+                style={{ textAlign: 'left', background: 'none', border: 'none', cursor: importingMbid ? 'wait' : 'pointer', width: '100%' }}
+              >
                 <div className={styles.artistAvatar}>
-                  {artist.image_url
-                    ? <img src={artist.image_url} alt={artist.name} className={styles.avatarImg} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                    : <span className={styles.avatarEmoji}>🎤</span>}
+                  <span className={styles.avatarEmoji}>🎤</span>
                 </div>
                 <div className={styles.artistInfo}>
-                  <div className={styles.artistName}>{artist.name}</div>
+                  <div className={styles.artistName}>{a.name}</div>
                   <div className={styles.artistMeta}>
-                    {artist.country && <span>{artist.country}</span>}
-                    {artist.genres?.length > 0 && (
-                      <span className={styles.artistGenre}>{artist.genres[0]}</span>
+                    {a.country && <span>{a.country}</span>}
+                    {a.genres?.length > 0 && (
+                      <span className={styles.artistGenre}>{a.genres[0]}</span>
                     )}
                   </div>
                 </div>
                 <span className={styles.arrow}>›</span>
-              </Link>
+              </button>
             ))}
           </div>
         )

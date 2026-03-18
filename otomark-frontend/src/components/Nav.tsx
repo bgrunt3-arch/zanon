@@ -82,6 +82,31 @@ function NotificationBell() {
   )
 }
 
+function SupportButton() {
+  const [loading, setLoading] = useState(false)
+
+  const handleSupport = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/v1/payment/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      className={styles.btnSupport}
+      onClick={handleSupport}
+      disabled={loading}
+    >
+      {loading ? '...' : '☕ 500円でサポート'}
+    </button>
+  )
+}
+
 export function Nav() {
   const pathname    = usePathname()
   const { isLoggedIn, user, logout } = useAuthStore()
@@ -99,7 +124,7 @@ export function Nav() {
         {/* ロゴ */}
         <Link href="/" className={styles.logo}>
           <span className={styles.logoDot} />
-          Otomark
+          ZanoN
         </Link>
 
         {/* タブナビ */}
@@ -117,6 +142,7 @@ export function Nav() {
 
         {/* 右側 */}
         <div className={styles.right}>
+          <SupportButton />
           {isLoggedIn ? (
             <>
               <NotificationBell />

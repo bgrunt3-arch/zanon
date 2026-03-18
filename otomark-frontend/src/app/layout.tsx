@@ -5,10 +5,10 @@ import { Nav } from '@/components/Nav'
 import { ToastContainer } from '@/components/Toast'
 
 export const metadata: Metadata = {
-  title: 'Otomark - 音楽レビューSNS',
+  title: 'ZanoN - 音楽レビューSNS',
   description: '聴いた音楽を記録して、レビューをシェアしよう',
   openGraph: {
-    title: 'Otomark',
+    title: "ZanoN",
     description: '聴いた音楽を記録して、レビューをシェアしよう',
     type: 'website',
   },

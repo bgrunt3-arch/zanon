@@ -17,6 +17,7 @@ import {
     authApi,
     notificationsApi,
     wantApi,
+    musicbrainzApi,
     type Review,
   } from './api'
   
@@ -38,6 +39,34 @@ import {
     saved:       ()                => ['saved']                      as const,
   }
   
+  // =============================================
+  // MusicBrainz 検索
+  // =============================================
+  export function useMBSearchReleases(q: string) {
+    return useQuery({
+      queryKey: ['mb', 'releases', q],
+      queryFn: () => musicbrainzApi.searchReleases(q).then(r => r.data.results),
+      enabled: q.trim().length > 0,
+      staleTime: 1000 * 60 * 5,
+    })
+  }
+
+  export function useMBSearchArtists(q: string) {
+    return useQuery({
+      queryKey: ['mb', 'artists', q],
+      queryFn: () => musicbrainzApi.searchArtists(q).then(r => r.data.results),
+      enabled: q.trim().length > 0,
+      staleTime: 1000 * 60 * 5,
+    })
+  }
+
+  export function useMBImport() {
+    return useMutation({
+      mutationFn: (data: { type: 'release' | 'artist' | 'recording'; mbid: string }) =>
+        musicbrainzApi.import(data).then(r => r.data),
+    })
+  }
+
   // =============================================
   // アルバム
   // =============================================

@@ -70,6 +70,23 @@
   }
   .btnPost:hover { background: #d4ff50; transform: translateY(-1px); }
   
+  .btnSupport {
+    border: 1px solid rgba(196, 255, 51, 0.3);
+    color: var(--accent);
+    background: rgba(196, 255, 51, 0.06);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btnSupport:hover:not(:disabled) {
+    background: rgba(196, 255, 51, 0.15);
+    border-color: var(--accent);
+  }
+  .btnSupport:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .btnOutline {
     border: 1px solid var(--border);
     color: var(--text2);
