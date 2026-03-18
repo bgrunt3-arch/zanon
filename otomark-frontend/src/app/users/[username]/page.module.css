@@ -166,6 +166,23 @@
 .markTitle  { font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .markArtist { font-size: 0.68rem; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.markDeleteBtn {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1;
+}
+.markItem:hover .markDeleteBtn { opacity: 1; }
+
 .feed { display: flex; flex-direction: column; gap: 1rem; }
 
 .empty {

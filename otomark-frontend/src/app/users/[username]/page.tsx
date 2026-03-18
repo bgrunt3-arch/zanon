@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useUser, useUserReviews, useUserMarks, useFollow, useMe } from '@/lib/hooks'
+import { useUser, useUserReviews, useUserMarks, useFollow, useMe, useDeleteMark } from '@/lib/hooks'
 import { ReviewCard } from '@/components/ReviewCard'
 import { ProfileEditModal } from '@/components/ProfileEditModal'
 import styles from './page.module.css'
@@ -13,6 +13,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
   const { data: reviewsData } = useUserReviews(username)
   const { data: marksData } = useUserMarks(username)
   const followMutation = useFollow()
+  const deleteMark = useDeleteMark()
   const [editModalOpen, setEditModalOpen] = useState(false)
 
   const reviews = reviewsData?.reviews ?? []
@@ -93,6 +94,13 @@ export default function UserPage({ params }: { params: { username: string } }) {
                     ? <img src={mark.album_cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                     : <span>{mark.album_id ? '💿' : mark.track_id ? '🎵' : '🎤'}</span>}
                   {mark.score && <div className={styles.markBadge}>{'★'.repeat(mark.score)}</div>}
+                  {isOwnProfile && (
+                    <button
+                      className={styles.markDeleteBtn}
+                      onClick={() => deleteMark.mutate(mark.id)}
+                      aria-label="削除"
+                    >✕</button>
+                  )}
                 </div>
                 <div className={styles.markTitle}>{mark.album_title ?? mark.track_title ?? mark.artist_name}</div>
                 <div className={styles.markArtist}>{mark.artist_name}</div>
