@@ -31,6 +31,8 @@ export type ArtistSnsPost = {
   platform?: SnsPlatform
   /** 元投稿へのリンク（任意） */
   url?: string | null
+  /** YouTube動画ID（platformが'youtube'のとき） */
+  videoId?: string | null
 }
 
 function isMockMode(): boolean {
@@ -236,6 +238,7 @@ export async function fetchRecentSnsPosts(
             postedAt: relativeTime(v.publishedAt),
             platform: 'youtube',
             url: v.videoUrl,
+            videoId: v.videoId,
           })
         }
       }

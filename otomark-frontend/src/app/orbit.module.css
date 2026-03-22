@@ -1696,6 +1696,60 @@ a.artistCard:hover {
   margin-top: 10px;
 }
 
+/* YouTube カード */
+.youtubeCard {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.youtubeThumbnailBtn {
+  position: relative;
+  display: block;
+  width: calc(100% + 32px);
+  margin: 12px -16px 0;
+  padding: 0;
+  border: none;
+  background: #000;
+  cursor: pointer;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.youtubeThumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.youtubeThumbnailBtn:hover .youtubeThumbnail {
+  opacity: 0.7;
+}
+
+.youtubePlayIcon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.youtubeEmbed {
+  width: calc(100% + 32px);
+  margin: 12px -16px 0;
+  aspect-ratio: 16 / 9;
+}
+
+.youtubeIframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
 /* モック切り替えトグル */
 .mockToggle {
   display: flex;

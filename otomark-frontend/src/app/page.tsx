@@ -206,6 +206,7 @@ export default function HomePage() {
   const [retryTick, setRetryTick] = useState<number>(0)
   const [fallbackBanner, setFallbackBanner] = useState<boolean>(false)
   const [snsPosts, setSnsPosts] = useState<ArtistSnsPost[]>([])
+  const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null)
   const [trackFeedArtistId, setTrackFeedArtistId] = useState<string | null>(null)
   // Spotifyフィードは一時停止中
   const [activeFeedTab] = useState<'news' | 'spotify'>('news')
@@ -719,6 +720,53 @@ export default function HomePage() {
             visibleSnsPosts.length > 0 ? (
             <div className={styles.feed}>
               {visibleSnsPosts.map((post, i) => {
+                const isYoutube = post.platform === 'youtube' && post.videoId
+                const isExpanded = expandedVideoId === post.videoId
+
+                if (isYoutube) {
+                  return (
+                    <div key={`${post.artistId}-${i}`} className={`${styles.post} ${styles.snsBlock} ${styles.youtubeCard}`}>
+                      <div className={styles.postHeader}>
+                        <div className={styles.snsAvatarFallback}>{post.artistName.slice(0, 2)}</div>
+                        <div className={styles.snsHeader}>
+                          <span className={styles.snsHandle}>{post.handle}</span>
+                          <span className={styles.snsTime}>{post.postedAt}</span>
+                          <span className={styles.snsPlatformBadge} data-platform="youtube">YouTube</span>
+                        </div>
+                      </div>
+                      <p className={styles.snsContent}>{post.content}</p>
+                      {isExpanded ? (
+                        <div className={styles.youtubeEmbed}>
+                          <iframe
+                            src={`https://www.youtube.com/embed/${post.videoId}?autoplay=1`}
+                            title={post.content}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className={styles.youtubeIframe}
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.youtubeThumbnailBtn}
+                          onClick={() => setExpandedVideoId(post.videoId!)}
+                          aria-label={`${post.content}を再生`}
+                        >
+                          {post.avatarUrl && (
+                            <img src={post.avatarUrl} alt="" className={styles.youtubeThumbnail} />
+                          )}
+                          <span className={styles.youtubePlayIcon} aria-hidden>
+                            <svg viewBox="0 0 68 48" width="56" height="40">
+                              <path d="M66.52 7.74C65.7 4.67 63.3 2.27 60.24 1.45 54.9 0 34 0 34 0S13.1 0 7.76 1.45C4.7 2.27 2.3 4.67 1.48 7.74 0 13.08 0 24 0 24s0 10.92 1.48 16.26c.82 3.07 3.22 5.47 6.28 6.29C13.1 48 34 48 34 48s20.9 0 26.24-1.45c3.06-.82 5.46-3.22 6.28-6.29C68 34.92 68 24 68 24s0-10.92-1.48-16.26z" fill="rgba(0,0,0,0.75)"/>
+                              <path d="M45 24 27 14v20" fill="white"/>
+                            </svg>
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                }
+
                 const PostContent = (
                   <>
                     <div className={styles.postHeader}>
@@ -731,7 +779,7 @@ export default function HomePage() {
                         <span className={styles.snsHandle}>{post.handle}</span>
                         <span className={styles.snsTime}>{post.postedAt}</span>
                         <span className={styles.snsPlatformBadge} data-platform={post.platform ?? 'x'}>
-                          {post.platform === 'instagram' ? 'Instagram' : post.platform === 'youtube' ? 'YouTube' : 'X'}
+                          {post.platform === 'instagram' ? 'Instagram' : 'X'}
                         </span>
                       </div>
                     </div>
