@@ -378,15 +378,26 @@ function getSpotifyProxyUrl(path: string): string {
   return `/api/v1/spotify/proxy?path=${encodeURIComponent(targetPath)}`
 }
 
+// in-flight 重複排除: 同一URLへの並行リクエストを1本に束ねる
+const _inflight = new Map<string, Promise<Response>>()
+
 /** GET 系の共通処理。429 のとき Retry-After / バックオフで数回だけ待って再試行 */
 async function spotifyGet(path: string, token: string): Promise<Response> {
   // ブラウザ→Spotify直叩きだと CORS で Retry-After が読めないことがあるため、
   // バックエンドのプロキシ経由で取得する。
   const url = getSpotifyProxyUrl(path)
+
+  // 同じURLが既にin-flight中なら同じPromiseを返す（リクエスト数削減）
+  const inflightKey = url
+  const existing = _inflight.get(inflightKey)
+  if (existing) return existing.then((r) => r.clone())
+
   let attempt = 0
   // 429 の再試行は増やしすぎると逆に呼び出し回数が増えて不利なので最小限にする
   const max = 1
   let lastRes: Response | null = null
+
+  const doFetch = async (): Promise<Response> => {
   while (attempt < max) {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
@@ -441,7 +452,13 @@ async function spotifyGet(path: string, token: string): Promise<Response> {
     attempt++
   }
   // 最後も 429 ならそのレスポンスを返して呼び出し側で判断させる
-  return lastRes ?? fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    return lastRes ?? fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  }
+
+  const promise = doFetch()
+  _inflight.set(inflightKey, promise)
+  promise.finally(() => _inflight.delete(inflightKey))
+  return promise
 }
 
 /** 最大100件まで。API: GET /audio-features?ids=... */
@@ -833,6 +850,10 @@ export async function searchArtists(token: string, query: string): Promise<Spoti
   // 1文字クエリは Spotify API が 400 を返すことがあるためスキップ
   if (q.length < 2) return []
 
+  const cacheKey = `orbit.cache.searchArtists.${q}`
+  const cached = cacheGet<SpotifyArtist[]>(cacheKey)
+  if (cached) return cached
+
   const params = new URLSearchParams({
     q,
     type: 'artist',
@@ -845,6 +866,7 @@ export async function searchArtists(token: string, query: string): Promise<Spoti
 
   let res = await spotifyGet(`/search?${params.toString()}`, token)
   if (!res.ok) {
+    if (res.status === 429) return []
     const text = await res.text().catch(() => '')
     throw new Error(`Spotify API error (search-artists) ${res.status}: ${text}`)
   }
@@ -861,6 +883,7 @@ export async function searchArtists(token: string, query: string): Promise<Spoti
     }
   }
 
+  if (items.length > 0) cacheSet(cacheKey, items, CACHE_TTL_SHORT)
   return items
 }
 
@@ -896,14 +919,19 @@ export async function fetchArtistRecommendations(
   artistId: string,
   limit = 10,
 ): Promise<SpotifyTrack[]> {
-  if (isMockMode() || token === MOCK_ACCESS_TOKEN) {
+  const mockResult = () => {
     const lookupId = getMockTrackArtistId(artistId)
     const matched = MOCK_TOP_TRACKS.filter((t) => t.artists.some((a) => a.id === lookupId))
     if (matched.length > 0) return matched.slice(0, limit).map(enrichMockTrack)
     return [buildMockTrackForArtist(artistId)].slice(0, limit)
   }
-  // `top-tracks` / `search` が market や環境依存で失敗するケースがあるため、
-  // seed_artists で recommendations を取って表示を安定させる。
+
+  if (isMockMode() || token === MOCK_ACCESS_TOKEN) return mockResult()
+
+  const cacheKey = `orbit.cache.recommendations.${artistId}`
+  const cached = cacheGet<SpotifyTrack[]>(cacheKey)
+  if (cached) return cached
+
   const qs = new URLSearchParams({
     limit: String(Math.max(1, Math.min(50, limit))),
     seed_artists: artistId,
@@ -911,21 +939,16 @@ export async function fetchArtistRecommendations(
 
   const res = await spotifyGet(`/recommendations?${qs.toString()}`, token)
   if (!res.ok) {
+    if (res.status === 429) return mockResult()
     const text = await res.text().catch(() => '')
-    if (res.status === 429) {
-      throw new Error(
-        'Spotify API の利用上限に達しました。1〜2分待ってからページを再読み込みしてください。',
-      )
-    }
-    // 401 はトークン切れなので上位で処理してもらう
-    if (res.status === 401) {
-      throw new Error(`Spotify API error (recommendations) ${res.status}: ${text}`)
-    }
+    if (res.status === 401) throw new Error(`Spotify API error (recommendations) ${res.status}: ${text}`)
     throw new Error(`Spotify API error (recommendations) ${res.status}: ${text}`)
   }
 
   const data = (await res.json()) as { tracks?: SpotifyTrack[] }
-  return (data.tracks ?? []) as SpotifyTrack[]
+  const tracks = (data.tracks ?? []) as SpotifyTrack[]
+  cacheSet(cacheKey, tracks, CACHE_TTL_SHORT)
+  return tracks
 }
 
 /**
@@ -1239,7 +1262,7 @@ export async function searchTracksForArtist(
   _userCountry?: string | null,
   limit = 8,
 ): Promise<SpotifyTrack[]> {
-  if (isMockMode() || token === MOCK_ACCESS_TOKEN) {
+  const mockResult = () => {
     const lookupId = getMockTrackArtistId(artistId)
     const byId = MOCK_TOP_TRACKS.filter((t) => t.artists.some((a) => a.id === lookupId))
     if (byId.length > 0) return byId.slice(0, limit).map(enrichMockTrack)
@@ -1248,6 +1271,12 @@ export async function searchTracksForArtist(
     if (byName.length > 0) return byName.map(enrichMockTrack)
     return [buildMockTrackForArtist(artistId)].slice(0, limit)
   }
+
+  if (isMockMode() || token === MOCK_ACCESS_TOKEN) return mockResult()
+
+  const cacheKey = `orbit.cache.searchTracks.${artistId}`
+  const cached = cacheGet<SpotifyTrack[]>(cacheKey)
+  if (cached) return cached
   const safe = artistName.replace(/["']/g, '').trim()
   if (!safe) return []
 
@@ -1283,10 +1312,13 @@ export async function searchTracksForArtist(
 
     const byId = items.filter((t) => t.artists?.some((a) => a.id === artistId))
     const picked = (byId.length > 0 ? byId : items).slice(0, limit)
-    if (picked.length > 0) return picked
+    if (picked.length > 0) {
+      cacheSet(cacheKey, picked, CACHE_TTL_SHORT)
+      return picked
+    }
   }
 
-  return []
+  return mockResult()
 }
 
 /**
