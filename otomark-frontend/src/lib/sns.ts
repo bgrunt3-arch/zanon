@@ -84,6 +84,48 @@ function getApiBase(): string {
   return base ? base.replace(/\/$/, '') : ''
 }
 
+type YoutubeVideo = {
+  videoId: string
+  title: string
+  description: string
+  publishedAt: string
+  thumbnailUrl: string | null
+  channelTitle: string
+  videoUrl: string
+}
+
+/** 動画の公開日を相対表記に変換 */
+function relativeTime(iso: string): string {
+  try {
+    const diff = Date.now() - new Date(iso).getTime()
+    const min = Math.floor(diff / 60000)
+    if (min < 60) return `${min}分前`
+    const hr = Math.floor(min / 60)
+    if (hr < 24) return `${hr}時間前`
+    const day = Math.floor(hr / 24)
+    if (day < 30) return `${day}日前`
+    const mon = Math.floor(day / 30)
+    if (mon < 12) return `${mon}ヶ月前`
+    return `${Math.floor(mon / 12)}年前`
+  } catch {
+    return ''
+  }
+}
+
+/** バックエンド経由でYouTube最新動画を取得 */
+async function fetchYoutubeVideos(channelUrl: string, maxResults = 3): Promise<YoutubeVideo[]> {
+  const base = getApiBase()
+  const url = `${base}/api/v1/youtube/videos?channelUrl=${encodeURIComponent(channelUrl)}&maxResults=${maxResults}`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return []
+    const data = (await res.json()) as { videos?: YoutubeVideo[] }
+    return data.videos ?? []
+  } catch {
+    return []
+  }
+}
+
 /** バックエンド経由で MusicBrainz から複数アーティストの SNS URL を取得。名前一致するもののみ返す（誤登録を弾く） */
 async function fetchArtistSnsUrlsBatch(artistInfo: ArtistInfo[]): Promise<Record<string, ArtistSnsUrls>> {
   if (artistInfo.length === 0) return {}
@@ -156,8 +198,9 @@ function buildProfileCardsFromUrls(
 }
 
 /**
- * 複数アーティストの直近SNS投稿を取得。最大 limit 件（API上限: 500）。
- * MusicBrainz から取得した公式 SNS プロフィールURL を本物として表示。モックは使わない。
+ * 複数アーティストの直近SNS投稿を取得。
+ * YouTube: 最新動画を実際に取得して投稿として表示。
+ * X/Instagram: MusicBrainz から取得した公式URLをプロフィールカードとして表示。
  */
 export async function fetchRecentSnsPosts(
   artistIds: string[],
@@ -172,8 +215,56 @@ export async function fetchRecentSnsPosts(
 
   try {
     const urlsByArtist = await fetchArtistSnsUrlsBatch(info)
-    const cards = buildProfileCardsFromUrls(urlsByArtist, info)
-    return cards.slice(0, limit)
+    const infoMap = new Map(info.map((a) => [a.id, a.name]))
+    const posts: ArtistSnsPost[] = []
+
+    // YouTube動画取得（並列）とその他SNSプロフィールカードを生成
+    const ytFetches = Object.entries(urlsByArtist).map(async ([artistId, urls]) => {
+      const artistName = infoMap.get(artistId) ?? 'Artist'
+      const results: ArtistSnsPost[] = []
+
+      // YouTube: 実際の動画を取得
+      if (urls.youtube) {
+        const videos = await fetchYoutubeVideos(urls.youtube, 3)
+        for (const v of videos) {
+          results.push({
+            artistId,
+            artistName,
+            handle: v.channelTitle ? `@${v.channelTitle}` : extractHandle(urls.youtube, 'youtube'),
+            avatarUrl: v.thumbnailUrl,
+            content: v.title,
+            postedAt: relativeTime(v.publishedAt),
+            platform: 'youtube',
+            url: v.videoUrl,
+          })
+        }
+      }
+
+      // X / Instagram: プロフィールリンクカード
+      for (const platform of ['x', 'instagram'] as SnsPlatform[]) {
+        const url = urls[platform]
+        if (!url) continue
+        const handle = extractHandle(url, platform)
+        const label: Record<string, string> = { x: 'X', instagram: 'Instagram' }
+        results.push({
+          artistId,
+          artistName,
+          handle,
+          avatarUrl: null,
+          content: `${label[platform]} でフォロー`,
+          postedAt: '公式アカウント',
+          platform,
+          url,
+        })
+      }
+
+      return results
+    })
+
+    const nested = await Promise.all(ytFetches)
+    for (const arr of nested) posts.push(...arr)
+
+    return posts.slice(0, limit)
   } catch {
     return []
   }
