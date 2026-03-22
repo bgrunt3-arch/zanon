@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import styles from './quintet.module.css'
+import styles from './orbit.module.css'
 import {
   fetchMe,
   fetchArtistTopTracks,
@@ -13,7 +13,7 @@ import {
   getSelectedArtists,
   type SpotifyArtist,
   type SpotifyTrack,
-} from '@/lib/quintet'
+} from '@/lib/orbit'
 
 type FeedItem = {
   id: string
@@ -29,12 +29,12 @@ type FeedItem = {
 }
 
 type SortMode = 'recent' | 'overlap'
-const SORT_MODE_KEY = 'quintet.feed.sortMode'
-const ACTIVE_ARTIST_KEY = 'quintet.feed.activeArtistId'
-const ALBUMS_RATE_LIMIT_UNTIL_KEY = 'quintet.spotify.albumsRateLimitedUntil'
-const TRACKS_RATE_LIMIT_UNTIL_KEY = 'quintet.spotify.tracksRateLimitedUntil'
-const LAST_RATE_LIMIT_UNTIL_KEY = 'quintet.spotify.lastRateLimitedUntil'
-const LAST_RATE_LIMIT_RETRY_AFTER_SEC_KEY = 'quintet.spotify.lastRetryAfterSec'
+const SORT_MODE_KEY = 'orbit.feed.sortMode'
+const ACTIVE_ARTIST_KEY = 'orbit.feed.activeArtistId'
+const ALBUMS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.albumsRateLimitedUntil'
+const TRACKS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.tracksRateLimitedUntil'
+const LAST_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.lastRateLimitedUntil'
+const LAST_RATE_LIMIT_RETRY_AFTER_SEC_KEY = 'orbit.spotify.lastRetryAfterSec'
 const MOCK_SKELETON_DELAY_MS = 500
 
 const MOCK_ARTIST_GRADIENT_BY_NAME: Record<string, string> = {
@@ -49,7 +49,7 @@ function isMockMode(): boolean {
   const byEnv = (process.env.NEXT_PUBLIC_MOCK_MODE ?? '').toLowerCase() === 'true'
   if (byEnv) return true
   try {
-    return localStorage.getItem('quintet.mockMode') === '1'
+    return localStorage.getItem('orbit.mockMode') === '1'
   } catch {
     return false
   }
@@ -543,7 +543,7 @@ export default function HomePage() {
                 </div>
                 <div className={styles.postFooter}>
                   <div className={styles.footerMeta}>
-                    <span className={styles.chip}>Quintet Score {item.score}</span>
+                    <span className={styles.chip}>Orbit Score {item.score}</span>
                     <span className={styles.time}>{formatRelativeTime(item.fetchedAt)} 取得</span>
                   </div>
                   <a href={item.trackUrl} target="_blank" rel="noreferrer" className={styles.linkButton}>
