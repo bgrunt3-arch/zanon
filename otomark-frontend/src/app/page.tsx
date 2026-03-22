@@ -50,6 +50,9 @@ const ALBUM_TYPE_LABELS: Record<string, string> = {
   compilation: 'コンピレーション',
 }
 
+/** falseにするとSpotifyフィードのデータ取得を完全停止 */
+const SPOTIFY_FEED_ENABLED = false
+
 const ACTIVE_ARTIST_KEY = 'orbit.feed.activeArtistId'
 const ALBUMS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.albumsRateLimitedUntil'
 const TRACKS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.tracksRateLimitedUntil'
@@ -203,7 +206,8 @@ export default function HomePage() {
   const [fallbackBanner, setFallbackBanner] = useState<boolean>(false)
   const [snsPosts, setSnsPosts] = useState<ArtistSnsPost[]>([])
   const [trackFeedArtistId, setTrackFeedArtistId] = useState<string | null>(null)
-  const [activeFeedTab, setActiveFeedTab] = useState<'news' | 'spotify'>('news')
+  // Spotifyフィードは一時停止中
+  const [activeFeedTab] = useState<'news' | 'spotify'>('news')
   const [discographyTab, setDiscographyTab] = useState<'album' | 'single'>('album')
   const [popularTracksExpanded, setPopularTracksExpanded] = useState(false)
   const [topTracksByArtist, setTopTracksByArtist] = useState<Record<string, SpotifyTrack[]>>({})
@@ -294,6 +298,8 @@ export default function HomePage() {
         if (autoRetryTimer) window.clearTimeout(autoRetryTimer)
       }
     }
+
+    if (!SPOTIFY_FEED_ENABLED) { setLoading(false); return }
 
     setLoading(true)
     setError('')
@@ -641,26 +647,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <div className={styles.homeFeedTabTrack} role="tablist" aria-label="フィードの種類">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeFeedTab === 'news'}
-            className={`${styles.feedTabButton} ${activeFeedTab === 'news' ? styles.feedTabButtonActive : ''}`}
-            onClick={() => setActiveFeedTab('news')}
-          >
-            News
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeFeedTab === 'spotify'}
-            className={`${styles.feedTabButton} ${activeFeedTab === 'spotify' ? styles.feedTabButtonActive : ''}`}
-            onClick={() => setActiveFeedTab('spotify')}
-          >
-            Spotify
-          </button>
-        </div>
+        {/* Spotifyフィード一時停止中 — タブ非表示 */}
 
         {error && (
           <div className={styles.homeErrorCard}>
@@ -773,13 +760,7 @@ export default function HomePage() {
                   : 'フィルターを「すべて」にすると、ほかの推しの投稿もまとめて見られます。'}
               </p>
               <div className={styles.emptyFeedActions}>
-                <button
-                  type="button"
-                  className={styles.emptyFeedPrimary}
-                  onClick={() => setActiveFeedTab('spotify')}
-                >
-                  Spotify を見る
-                </button>
+                {/* Spotifyフィード一時停止中 */}
                 {activeArtistId !== 'all' && (
                   <button
                     type="button"
@@ -920,7 +901,7 @@ export default function HomePage() {
                   : '別のアーティストを選ぶか、すべて表示に切り替えてください。'}
               </p>
               <div className={styles.emptyFeedActions}>
-                <button type="button" className={styles.emptyFeedPrimary} onClick={() => setActiveFeedTab('news')}>
+                <button type="button" className={styles.emptyFeedPrimary}>
                   News に戻る
                 </button>
                 {activeArtistId !== 'all' && (
