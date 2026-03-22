@@ -24,6 +24,7 @@ import {
   buildFeedItems,
   toISODate,
   clearAccessToken,
+  clearForceMockFallback,
   getAccessToken,
   getSelectedArtists,
   saveSelectedArtists,
@@ -589,7 +590,19 @@ export default function HomePage() {
         <header className={styles.homeHeader}>
         {fallbackBanner && (
           <div className={styles.homeFallbackBanner}>
-            Spotify API に接続できませんでした。モックデータで表示しています。
+            <span>Spotify API に接続できませんでした。モックデータで表示しています。</span>
+            <button
+              type="button"
+              className={styles.homeFallbackBannerDismiss}
+              onClick={() => {
+                clearForceMockFallback()
+                localStorage.removeItem('orbit.mockMode')
+                setFallbackBanner(false)
+                setRetryTick((v) => v + 1)
+              }}
+            >
+              再接続
+            </button>
           </div>
         )}
 
