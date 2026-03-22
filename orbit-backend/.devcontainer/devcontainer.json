@@ -1,0 +1,18 @@
+{
+  "name": "orbit-backend",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "CACHEBUST": "2026-03-17-01"
+    }
+  },
+  "remoteUser": "root",
+  "postCreateCommand": "npm install && npm install -g @anthropic-ai/claude-code",
+  "forwardPorts": [3000],
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  }
+}
