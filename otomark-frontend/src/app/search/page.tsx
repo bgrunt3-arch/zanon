@@ -69,7 +69,7 @@ export default function SearchPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className={styles.sectionLabel}>Search</div>
+        <div className={styles.sectionLabel}>検索</div>
         <h1 className={styles.title}>検索</h1>
       </div>
 

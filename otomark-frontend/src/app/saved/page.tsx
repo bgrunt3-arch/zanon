@@ -20,7 +20,7 @@ export default function SavedPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.sectionLabel}>Bookmarks</div>
+      <div className={styles.sectionLabel}>保存済み</div>
       <h1 className={styles.title}>保存済みレビュー</h1>
 
       {isLoading ? (

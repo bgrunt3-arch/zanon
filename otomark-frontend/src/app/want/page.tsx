@@ -69,7 +69,7 @@ export default function WantPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.sectionLabel}>Want to Listen</div>
+      <div className={styles.sectionLabel}>聴きたいリスト</div>
       <h1 className={styles.pageTitle}>聴きたいリスト</h1>
 
       {isLoading ? (

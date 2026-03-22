@@ -82,7 +82,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
 
       {/* 聴いた作品 */}
       <section id="marks" className={styles.section}>
-        <div className={styles.sectionLabel}>Listened</div>
+        <div className={styles.sectionLabel}>聴いた作品</div>
         <h2 className={styles.sectionTitle}>聴いた作品</h2>
         {marks.length === 0 ? (
           <div className={styles.empty}>まだ記録がありません</div>
@@ -113,7 +113,7 @@ export default function UserPage({ params }: { params: { username: string } }) {
 
       {/* レビュー */}
       <section id="reviews" className={styles.section}>
-        <div className={styles.sectionLabel}>Reviews</div>
+        <div className={styles.sectionLabel}>レビュー</div>
         <h2 className={styles.sectionTitle}>レビュー</h2>
         {reviews.length === 0 ? (
           <div className={styles.empty}>まだレビューがありません</div>

@@ -68,7 +68,7 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
             : <span className={styles.coverEmoji}>💿</span>}
         </div>
         <div className={styles.meta}>
-          <div className={styles.metaLabel}>Album</div>
+          <div className={styles.metaLabel}>アルバム</div>
           <h1 className={styles.title}>{album.title}</h1>
           <div className={styles.artist}>{album.artist_name}</div>
           <div className={styles.subMeta}>
@@ -114,7 +114,7 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
       {/* トラックリスト */}
       {tracks.length > 0 && (
         <section className={styles.section}>
-          <div className={styles.sectionLabel}>Tracklist</div>
+          <div className={styles.sectionLabel}>収録曲</div>
           <h2 className={styles.sectionTitle}>収録曲</h2>
           <ol className={styles.trackList}>
             {tracks.map(track => (
@@ -138,7 +138,7 @@ export default function AlbumPage({ params }: { params: { albumId: string } }) {
 
       {/* レビュー */}
       <section className={styles.section}>
-        <div className={styles.sectionLabel}>Reviews</div>
+        <div className={styles.sectionLabel}>レビュー</div>
         <h2 className={styles.sectionTitle}>レビュー</h2>
         {reviews.length === 0 ? (
           <div className={styles.empty}>まだレビューがありません</div>

@@ -22,7 +22,7 @@ export default function RankingPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className={styles.sectionLabel}>Charts</div>
+        <div className={styles.sectionLabel}>ランキング</div>
         <h1 className={styles.title}>ランキング</h1>
       </div>
 

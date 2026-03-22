@@ -44,12 +44,12 @@ api.route('/payment',      paymentRouter)
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0' }))
 
 // ===== 404ハンドラー =====
-app.notFound((c) => c.json({ error: 'Not Found' }, 404))
+app.notFound((c) => c.json({ error: 'ページが見つかりません' }, 404))
 
 // ===== エラーハンドラー =====
 app.onError((err, c) => {
   console.error('[ERROR]', err)
-  return c.json({ error: 'Internal Server Error' }, 500)
+  return c.json({ error: 'サーバーエラーが発生しました' }, 500)
 })
 
 // ===== サーバー起動 =====

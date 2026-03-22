@@ -36,7 +36,7 @@ export default function ArtistPage({ params }: { params: { artistId: string } })
             : <span className={styles.avatarEmoji}>🎤</span>}
         </div>
         <div className={styles.meta}>
-          <div className={styles.metaLabel}>Artist</div>
+          <div className={styles.metaLabel}>アーティスト</div>
           <h1 className={styles.title}>{artist.name}</h1>
           <div className={styles.subMeta}>
             {artist.country && <span>{artist.country}</span>}
@@ -56,7 +56,7 @@ export default function ArtistPage({ params }: { params: { artistId: string } })
 
       {/* ディスコグラフィー */}
       <section className={styles.section}>
-        <div className={styles.sectionLabel}>Discography</div>
+        <div className={styles.sectionLabel}>ディスコグラフィー</div>
         <h2 className={styles.sectionTitle}>アルバム</h2>
         {displayAlbums.length === 0 ? (
           <div className={styles.empty}>アルバムがまだ登録されていません</div>
