@@ -441,7 +441,7 @@ export default function HomePage() {
       <div className={styles.shell}>
         <div className={styles.stickyHeader} style={{ ['--sticky-alpha' as string]: String(stickyAlpha) }}>
           <h1 className={styles.title}>
-            Quin<span className={styles.accent}>tet</span>
+            Orb<span className={styles.accent}>it</span>
           </h1>
           <p className={styles.meta}>{viewerName} さん向けのリアルタイム・ミックス</p>
           <div className={styles.toolbar}>
