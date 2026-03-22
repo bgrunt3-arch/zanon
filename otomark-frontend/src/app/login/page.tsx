@@ -1,89 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useMutation } from '@tanstack/react-query'
-import { authApi } from '@/lib/api'
-import { useAuthStore } from '@/lib/store'
-import styles from '../auth.module.css'
+import styles from '../orbit.module.css'
+import { getSpotifyAuthorizeUrl } from '@/lib/orbit'
 
 export default function LoginPage() {
-  const router  = useRouter()
-  const { login } = useAuthStore()
+  const [error, setError] = useState('')
 
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')
-
-  const mutation = useMutation({
-    mutationFn: () => authApi.login({ email, password }),
-    onSuccess: ({ data }) => {
-      login(data.token, data.user)
-      router.push('/')
-    },
-    onError: (err: any) => {
-      setError(err.response?.data?.error ?? 'ログインに失敗しました')
-    },
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async () => {
     setError('')
-    mutation.mutate()
+    try {
+      const authorizeUrl = await getSpotifyAuthorizeUrl()
+      window.location.href = authorizeUrl
+    } catch {
+      setError('Spotifyログインの開始に失敗しました。再試行してください。')
+    }
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.center}>
       <div className={styles.card}>
-        <div className={styles.logo}>
-          <span className={styles.logoDot} />
-          ZanoN
-        </div>
-        <h1 className={styles.title}>ログイン</h1>
-
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.group}>
-            <label className={styles.label}>メールアドレス</label>
-            <input
-              className={styles.input}
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>パスワード</label>
-            <input
-              className={styles.input}
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && <div className={styles.error}>{error}</div>}
-
-          <button
-            type="submit"
-            className={styles.btnSubmit}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? <span className="spinner" /> : 'ログイン'}
-          </button>
-        </form>
-
-        <p className={styles.footer}>
-          アカウントをお持ちでない方は{' '}
-          <Link href="/register" className={styles.link}>新規登録</Link>
-        </p>
+        <h1 className={styles.logo}>
+          Orbit
+        </h1>
+        <p className={styles.subtitle}>推し5人のタイムラインを、Spotifyから始めよう。</p>
+        <button className={styles.button} type="button" onClick={handleLogin}>
+          Spotifyでログイン
+        </button>
+        {error && <p className={styles.error}>{error}</p>}
       </div>
     </div>
   )

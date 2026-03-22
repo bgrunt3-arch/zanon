@@ -1,198 +1,167 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMBSearchReleases, useMBSearchArtists, useMBImport } from '@/lib/hooks'
-import styles from './page.module.css'
+import Link from 'next/link'
+import styles from '../orbit.module.css'
+import {
+  getAccessToken,
+  getSelectedArtists,
+  searchTracksFromArtists,
+  buildFeedItems,
+  type SpotifyArtist,
+  type FeedItem,
+} from '@/lib/orbit'
 
-type Tab = 'albums' | 'artists'
+const SEARCH_DEBOUNCE_MS = 300
 
-function useDebounce(value: string, delay: number) {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(timer)
-  }, [value, delay])
-  return debounced
-}
-
-export default function SearchPage() {
+function SearchContent() {
   const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [tab, setTab] = useState<Tab>('albums')
-  const [importingMbid, setImportingMbid] = useState<string | null>(null)
-  const [isRetrying, setIsRetrying] = useState(false)
+  const [selectedArtists, setSelectedArtists] = useState<SpotifyArtist[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<FeedItem[]>([])
+  const [searching, setSearching] = useState(false)
 
-  const debouncedQuery = useDebounce(query, 500)
-
-  // MusicBrainzのレートリミット対策: アクティブなタブのクエリのみ発火する
-  const albumQuery = tab === 'albums' ? debouncedQuery : ''
-  const artistQuery = tab === 'artists' ? debouncedQuery : ''
-
-  const { data: releases, isLoading: releasesLoading, isError: releasesError, refetch: refetchReleases } = useMBSearchReleases(albumQuery)
-  const { data: artists, isLoading: artistsLoading, isError: artistsError, refetch: refetchArtists } = useMBSearchArtists(artistQuery)
-  const mbImport = useMBImport()
-
-  const isLoading = tab === 'albums' ? releasesLoading : artistsLoading
-  const isError   = tab === 'albums' ? releasesError   : artistsError
-  const refetch   = tab === 'albums' ? refetchReleases  : refetchArtists
-  const hasQuery  = debouncedQuery.trim().length > 0
-
-  const handleRetry = () => {
-    setIsRetrying(true)
-    setTimeout(() => {
-      refetch()
-      setIsRetrying(false)
-    }, 1000)
-  }
-
-  const handleAlbumClick = async (mbid: string) => {
-    setImportingMbid(mbid)
-    try {
-      const result = await mbImport.mutateAsync({ type: 'release', mbid })
-      if (result.albumId) router.push(`/albums/${result.albumId}`)
-    } finally {
-      setImportingMbid(null)
+  useEffect(() => {
+    const token = getAccessToken()
+    if (!token) {
+      router.replace('/login')
+      return
     }
-  }
-
-  const handleArtistClick = async (mbid: string) => {
-    setImportingMbid(mbid)
-    try {
-      const result = await mbImport.mutateAsync({ type: 'artist', mbid })
-      if (result.artistId) router.push(`/artists/${result.artistId}`)
-    } finally {
-      setImportingMbid(null)
+    const picks = getSelectedArtists()
+    setSelectedArtists(picks)
+    if (picks.length !== 5) {
+      router.replace('/onboarding')
+      return
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q || selectedArtists.length === 0) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      const token = getAccessToken()
+      if (!token || cancelled) return
+      setSearching(true)
+      try {
+        const tracks = await searchTracksFromArtists(token, selectedArtists, q, 30)
+        if (cancelled) return
+        const pickIds = new Set(selectedArtists.map((a) => a.id))
+        const tagged = tracks.map((t) => ({
+          track: t,
+          sourcePickId: t.artists.find((a) => pickIds.has(a.id))?.id ?? null,
+          fetchedAt: null as string | null,
+          albumName: t.album?.name ?? null,
+          coverUrl: t.album?.images?.[0]?.url ?? null,
+        }))
+        setSearchResults(buildFeedItems(tagged, selectedArtists))
+      } catch {
+        if (!cancelled) setSearchResults([])
+      } finally {
+        if (!cancelled) setSearching(false)
+      }
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchQuery, selectedArtists])
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.sectionLabel}>Search</div>
+    <div className={styles.screen} data-nav-scroll>
+      <div className={styles.shell}>
         <h1 className={styles.title}>検索</h1>
-      </div>
+        <p className={styles.meta} style={{ marginBottom: 16 }}>
+          5人の推しの曲を検索
+        </p>
 
-      {/* 検索バー */}
-      <div className={styles.searchBar}>
-        <span className={styles.searchIcon}>🔍</span>
         <input
-          className={styles.searchInput}
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="アルバム名・アーティスト名を入力..."
+          id="search-input"
+          name="search"
+          type="search"
+          placeholder="5人の推しの曲を検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           autoFocus
+          className={styles.spotifyNavSearch}
+          style={{
+            width: '100%',
+            marginBottom: 24,
+            border: 'none',
+            color: '#fff',
+            outline: 'none',
+            fontSize: 16,
+          }}
         />
-        {query && (
-          <button className={styles.clearBtn} onClick={() => setQuery('')}>✕</button>
-        )}
-      </div>
 
-      {/* タブ */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${tab === 'albums' ? styles.activeTab : ''}`}
-          onClick={() => setTab('albums')}
-        >
-          💿 アルバム
-          {tab === 'albums' && hasQuery && releases && (
-            <span className={styles.tabCount}>{releases.length}</span>
-          )}
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'artists' ? styles.activeTab : ''}`}
-          onClick={() => setTab('artists')}
-        >
-          🎤 アーティスト
-          {tab === 'artists' && hasQuery && artists && (
-            <span className={styles.tabCount}>{artists.length}</span>
-          )}
-        </button>
-      </div>
-
-      {/* コンテンツ */}
-      {!hasQuery ? (
-        <div className={styles.empty}>キーワードを入力して検索してください</div>
-      ) : isLoading ? (
-        <div className={styles.center}><div className="spinner" /></div>
-      ) : isError ? (
-        <div className={styles.empty}>
-          検索に失敗しました。
-          <button
-            onClick={handleRetry}
-            disabled={isRetrying}
-            style={{ marginLeft: '8px', color: 'var(--accent)', background: 'none', border: 'none', cursor: isRetrying ? 'wait' : 'pointer', textDecoration: 'underline', opacity: isRetrying ? 0.5 : 1 }}
-          >
-            {isRetrying ? '待機中...' : 'もう一度試す'}
-          </button>
-        </div>
-      ) : tab === 'albums' ? (
-        !releases || releases.length === 0 ? (
-          <div className={styles.empty}>「{debouncedQuery}」に一致するアルバムが見つかりません</div>
-        ) : (
-          <div className={styles.albumGrid}>
-            {releases.map(r => (
-              <button
-                key={r.mbid}
-                className={styles.albumCard}
-                onClick={() => handleAlbumClick(r.mbid)}
-                disabled={importingMbid !== null}
-                style={{ textAlign: 'left', background: 'none', border: 'none', cursor: importingMbid ? 'wait' : 'pointer', width: '100%' }}
-              >
-                <div className={styles.albumCover}>
-                  <img
-                    src={r.coverUrl}
-                    alt={r.title}
-                    className={styles.coverImg}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
-                  {importingMbid === r.mbid && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '8px' }}>
-                      <div className="spinner" />
-                    </div>
-                  )}
-                </div>
-                <div className={styles.albumInfo}>
-                  <div className={styles.albumTitle}>{r.title}</div>
-                  <div className={styles.albumArtist}>{r.artist}</div>
-                  {r.date && <div className={styles.albumScore}>{r.date.slice(0, 4)}</div>}
-                </div>
-              </button>
-            ))}
-          </div>
-        )
-      ) : (
-        !artists || artists.length === 0 ? (
-          <div className={styles.empty}>「{debouncedQuery}」に一致するアーティストが見つかりません</div>
-        ) : (
-          <div className={styles.artistList}>
-            {artists.map(a => (
-              <button
-                key={a.mbid}
-                className={styles.artistItem}
-                onClick={() => handleArtistClick(a.mbid)}
-                disabled={importingMbid !== null}
-                style={{ textAlign: 'left', background: 'none', border: 'none', cursor: importingMbid ? 'wait' : 'pointer', width: '100%' }}
-              >
-                <div className={styles.artistAvatar}>
-                  <span className={styles.avatarEmoji}>🎤</span>
-                </div>
-                <div className={styles.artistInfo}>
-                  <div className={styles.artistName}>{a.name}</div>
-                  <div className={styles.artistMeta}>
-                    {a.country && <span>{a.country}</span>}
-                    {a.genres?.length > 0 && (
-                      <span className={styles.artistGenre}>{a.genres[0]}</span>
-                    )}
+        {searching ? (
+          <div className={styles.feed}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={`skeleton-${i}`} className={`${styles.post} ${styles.skeletonPost}`}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div className={`${styles.skeletonBlock}`} style={{ width: 'var(--icon-lg)', height: 'var(--icon-lg)', borderRadius: 8, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className={`${styles.skeletonBlock}`} style={{ height: 14, width: '80%', marginBottom: 8 }} />
+                    <div className={`${styles.skeletonBlock}`} style={{ height: 12, width: '60%' }} />
                   </div>
                 </div>
-                <span className={styles.arrow}>›</span>
-              </button>
+              </div>
             ))}
           </div>
-        )
-      )}
+        ) : searchQuery.trim() === '' ? (
+          <p className={styles.meta} style={{ color: '#727272' }}>
+            キーワードを入力して検索を開始してください。
+          </p>
+        ) : searchResults.length > 0 ? (
+          <div className={styles.feed}>
+            {searchResults.map((item) => (
+              <a
+                key={item.id}
+                href={item.trackUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={styles.post}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  {item.coverUrl ? (
+                    <img src={item.coverUrl} alt="" style={{ width: 'var(--icon-lg)', height: 'var(--icon-lg)', borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 'var(--icon-lg)', height: 'var(--icon-lg)', borderRadius: 8, background: '#2a2a2a', display: 'grid', placeItems: 'center', color: '#1db954', flexShrink: 0 }}>
+                      ♪
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.title}
+                    </p>
+                    <p className={styles.meta} style={{ fontSize: 12 }}>
+                      {item.body}
+                    </p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.meta} style={{ color: '#727272' }}>
+            該当する曲が見つかりませんでした。
+          </p>
+        )}
+
+        <div style={{ marginTop: 24 }}>
+          <Link href="/onboarding" className={styles.ghostButton} style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none' }}>
+            推しを変更
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
+
+export default dynamic(() => Promise.resolve(SearchContent), { ssr: false })

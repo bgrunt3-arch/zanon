@@ -1,0 +1,4 @@
+- UIはSpotifyのPremiumデザインを模倣（背景#000000, グリーン#1DB954）。
+- Client ID [fd5502e75e274fdb917df77dbdcc508a] を使用。
+- 5人のアーティスト選択UIと、それらのSNS/音楽が混ざった「Flow」画面を最優先で作成。
+- **開発時**: `next dev` 起動中に `npm run build` を走らせない（`.next` が壊れ `Cannot find module './948.js'` / `__webpack_modules__[moduleId] is not a function` になる）。検証後は `npm run dev:clean` で再起動（`dev:clean` は **3000番を掴んでいる node を kill** してから `.next` 削除→起動）。

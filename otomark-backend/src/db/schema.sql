@@ -78,25 +78,12 @@ CREATE TABLE IF NOT EXISTS marks (
   )
 );
 
--- レビューテーブル
-CREATE TABLE IF NOT EXISTS reviews (
-  id          SERIAL PRIMARY KEY,
-  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  mark_id     INT NOT NULL REFERENCES marks(id) ON DELETE CASCADE UNIQUE,
-  body        TEXT NOT NULL,
-  spoiler     BOOLEAN DEFAULT FALSE,
-  likes_count INT DEFAULT 0,
-  created_at  TIMESTAMP DEFAULT NOW(),
-  updated_at  TIMESTAMP DEFAULT NOW()
-);
+-- レビュー機能廃止に伴う旧テーブル削除
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS saved_reviews CASCADE;
+DROP TABLE IF EXISTS review_likes CASCADE;
+DROP TABLE IF EXISTS reviews CASCADE;
 
--- いいねテーブル
-CREATE TABLE IF NOT EXISTS review_likes (
-  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  review_id  INT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  PRIMARY KEY (user_id, review_id)
-);
 
 -- フォローテーブル
 CREATE TABLE IF NOT EXISTS follows (
@@ -125,33 +112,20 @@ CREATE TABLE IF NOT EXISTS want_list (
   )
 );
 
--- 保存済みレビューテーブル
-CREATE TABLE IF NOT EXISTS saved_reviews (
-  user_id    INT NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
-  review_id  INT NOT NULL REFERENCES reviews(id)  ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  PRIMARY KEY (user_id, review_id)
-);
-
--- コメントテーブル
-CREATE TABLE IF NOT EXISTS comments (
-  id          SERIAL PRIMARY KEY,
-  review_id   INT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
-  user_id     INT NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
-  body        TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
-  created_at  TIMESTAMP DEFAULT NOW()
-);
 
 -- 通知テーブル
 CREATE TABLE IF NOT EXISTS notifications (
   id          SERIAL PRIMARY KEY,
   user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   actor_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type        VARCHAR(20) NOT NULL CHECK (type IN ('like', 'comment', 'follow')),
-  review_id   INT REFERENCES reviews(id) ON DELETE CASCADE,
+  type        VARCHAR(20) NOT NULL CHECK (type IN ('follow')),
   is_read     BOOLEAN DEFAULT FALSE,
   created_at  TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE notifications DROP COLUMN IF EXISTS review_id;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications
+  ADD CONSTRAINT notifications_type_check CHECK (type IN ('follow'));
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 
 -- =============================================
@@ -159,16 +133,11 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 -- =============================================
 CREATE INDEX IF NOT EXISTS idx_marks_user_id       ON marks(user_id);
 CREATE INDEX IF NOT EXISTS idx_marks_album_id      ON marks(album_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_mark_id     ON reviews(mark_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_created_at  ON reviews(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_follows_follower    ON follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_follows_following   ON follows(following_id);
 CREATE INDEX IF NOT EXISTS idx_albums_artist_id    ON albums(artist_id);
 CREATE INDEX IF NOT EXISTS idx_tracks_album_id     ON tracks(album_id);
 
--- =============================================
--- レビュー更新時に updated_at を自動更新するトリガー
--- =============================================
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -176,10 +145,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER reviews_updated_at
-  BEFORE UPDATE ON reviews
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE OR REPLACE TRIGGER users_updated_at
   BEFORE UPDATE ON users
@@ -209,3 +174,58 @@ CREATE TABLE IF NOT EXISTS user_bookmarks (
   UNIQUE (user_id, mbid)
 );
 CREATE INDEX IF NOT EXISTS idx_user_bookmarks_user_id ON user_bookmarks(user_id);
+
+-- =============================================
+-- ユーザーお気に入りアーティスト（最大5件）
+-- =============================================
+CREATE TABLE IF NOT EXISTS user_faves (
+  id                 SERIAL PRIMARY KEY,
+  user_id            INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  artist_id          VARCHAR(100) NOT NULL,
+  artist_name        VARCHAR(255) NOT NULL,
+  artist_image_url   TEXT,
+  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, artist_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_faves_user_id ON user_faves(user_id);
+
+-- 既存環境との互換: 旧カラム名から新カラム名へ移行
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_faves' AND column_name = 'spotify_artist_id'
+  ) THEN
+    ALTER TABLE user_faves RENAME COLUMN spotify_artist_id TO artist_id;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_faves' AND column_name = 'image_url'
+  ) THEN
+    ALTER TABLE user_faves RENAME COLUMN image_url TO artist_image_url;
+  END IF;
+END;
+$$;
+
+-- 1ユーザー最大5件のDB制約
+CREATE OR REPLACE FUNCTION enforce_user_faves_limit()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (
+    SELECT COUNT(*)
+    FROM user_faves
+    WHERE user_id = NEW.user_id
+      AND (TG_OP = 'INSERT' OR id <> NEW.id)
+  ) >= 5 THEN
+    RAISE EXCEPTION 'user_faves limit exceeded (max 5 per user)';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS user_faves_limit_trigger ON user_faves;
+CREATE TRIGGER user_faves_limit_trigger
+  BEFORE INSERT OR UPDATE OF user_id ON user_faves
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_user_faves_limit();

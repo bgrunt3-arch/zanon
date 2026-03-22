@@ -8,12 +8,10 @@ export const notificationsRouter = new Hono()
 notificationsRouter.get('/', authRequired, async (c) => {
   const { userId } = c.get('user')
   const notifications = await queryMany(
-    `SELECT n.id, n.type, n.is_read, n.created_at, n.review_id,
-            u.username AS actor_username, u.display_name AS actor_display_name,
-            r.body AS review_body
+    `SELECT n.id, n.type, n.is_read, n.created_at,
+            u.username AS actor_username, u.display_name AS actor_display_name
      FROM notifications n
      JOIN users u ON u.id = n.actor_id
-     LEFT JOIN reviews r ON r.id = n.review_id
      WHERE n.user_id = $1
      ORDER BY n.created_at DESC
      LIMIT 30`,

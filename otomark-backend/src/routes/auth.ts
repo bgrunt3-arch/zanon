@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { db, queryOne, queryMany } from '../db/client.ts'
+import { createHash, randomBytes } from 'crypto'
+import { db, queryOne } from '../db/client.ts'
 import { signToken, authRequired } from '../middleware/auth.ts'
 
 export const authRouter = new Hono()
@@ -91,6 +92,76 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
   })
 })
 
+// ===== POST /auth/spotify - Spotify access token -> app JWT交換 =====
+// 本番バックエンドは faves 保存に app JWT が必要なため、
+// Spotify 認証後の access token からユーザーを作成/復元して JWT を返します。
+authRouter.post('/spotify', async (c) => {
+  const auth = c.req.header('Authorization') ?? ''
+  if (!auth.startsWith('Bearer ')) {
+    return c.json({ error: 'Spotify access token が必要です' }, 400)
+  }
+  const spotifyAccessToken = auth.slice('Bearer '.length)
+
+  const spRes = await fetch('https://api.spotify.com/v1/me', {
+    headers: {
+      Authorization: `Bearer ${spotifyAccessToken}`,
+    },
+  })
+
+  if (!spRes.ok) {
+    return c.json({ error: 'Spotify access token が無効です' }, 401)
+  }
+
+  const me = await spRes.json() as {
+    id: string
+    display_name?: string | null
+    images?: Array<{ url: string }>
+  }
+
+  const spotifyUserId = me.id
+  // `users.username` は VARCHAR(30) なので、Spotify id をそのまま入れると桁超過し得る。
+  // 衝突しにくい短いユーザー名に正規化する。
+  const idHash = createHash('sha256').update(spotifyUserId).digest('hex').slice(0, 16)
+  const email = `spotify_${idHash}@spotify.local`
+  const usernameBase = `sp_${idHash}`
+  const displayName = (me.display_name ?? usernameBase).slice(0, 50)
+  const avatarUrl = me.images?.[0]?.url ?? null
+
+  // ユーザーは Spotify id から決定的なメールアドレスで一意化する
+  let user = await queryOne<{
+    id: number
+    username: string
+    email: string
+    display_name: string
+    avatar_url: string | null
+  }>('SELECT id, username, email, display_name, avatar_url FROM users WHERE email = $1', [email])
+
+  if (!user) {
+    const randomPassword = randomBytes(16).toString('hex')
+    const hashedPassword = await bcrypt.hash(randomPassword, 12)
+
+    user = await queryOne(
+      `INSERT INTO users (username, email, password, display_name, bio, avatar_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, username, email, display_name, avatar_url`,
+      [usernameBase, email, hashedPassword, displayName, null, avatarUrl]
+    )
+  }
+
+  const token = signToken({ userId: user.id, username: user.username })
+
+  return c.json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      display_name: user.display_name,
+      avatar_url: user.avatar_url,
+    },
+  })
+})
+
 // ===== GET /auth/me - 自分のプロフィール取得 =====
 authRouter.get('/me', authRequired, async (c) => {
   const { userId } = c.get('user')
@@ -98,18 +169,16 @@ authRouter.get('/me', authRequired, async (c) => {
   const user = await queryOne<{
     id: number; username: string; email: string
     display_name: string; bio: string | null; avatar_url: string | null
-    marks_count: number; reviews_count: number
+    marks_count: number
     followers_count: number; following_count: number
   }>(
     `SELECT
        u.id, u.username, u.email, u.display_name, u.bio, u.avatar_url,
        COUNT(DISTINCT m.id)  AS marks_count,
-       COUNT(DISTINCT r.id)  AS reviews_count,
        COUNT(DISTINCT f1.follower_id)  AS followers_count,
        COUNT(DISTINCT f2.following_id) AS following_count
      FROM users u
      LEFT JOIN marks   m  ON m.user_id = u.id
-     LEFT JOIN reviews r  ON r.user_id = u.id
      LEFT JOIN follows f1 ON f1.following_id = u.id
      LEFT JOIN follows f2 ON f2.follower_id  = u.id
      WHERE u.id = $1
@@ -119,34 +188,6 @@ authRouter.get('/me', authRequired, async (c) => {
 
   if (!user) return c.json({ error: 'ユーザーが見つかりません' }, 404)
   return c.json(user)
-})
-
-// ===== GET /auth/saved - 保存済みレビュー一覧 =====
-authRouter.get('/saved', authRequired, async (c) => {
-  const { userId } = c.get('user')
-
-  const reviews = await queryMany(
-    `SELECT r.id, r.body, r.likes_count, r.created_at,
-            u.id AS user_id, u.username, u.display_name, u.avatar_url,
-            m.score,
-            a.id AS album_id, a.title AS album_title, a.cover_url AS album_cover,
-            ar.id AS artist_id, ar.name AS artist_name,
-            t.id AS track_id, t.title AS track_title,
-            EXISTS(SELECT 1 FROM review_likes rl WHERE rl.review_id = r.id AND rl.user_id = $1) AS is_liked,
-            true AS is_saved
-     FROM saved_reviews sv
-     JOIN reviews r ON r.id = sv.review_id
-     JOIN users u ON u.id = r.user_id
-     JOIN marks m ON m.id = r.mark_id
-     LEFT JOIN albums a ON a.id = m.album_id
-     LEFT JOIN artists ar ON ar.id = COALESCE(m.artist_id, a.artist_id)
-     LEFT JOIN tracks t ON t.id = m.track_id
-     WHERE sv.user_id = $1
-     ORDER BY sv.created_at DESC`,
-    [userId]
-  )
-
-  return c.json({ reviews })
 })
 
 // ===== DELETE /auth/account - アカウント削除 =====

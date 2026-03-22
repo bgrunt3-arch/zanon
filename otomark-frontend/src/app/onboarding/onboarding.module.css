@@ -1,0 +1,590 @@
+/* 迫力のあるオンボーディング選択画面 */
+
+.screen {
+  height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #050508;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(29, 185, 84, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 100% 50%, rgba(29, 185, 84, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse 80% 60% at 0% 80%, rgba(173, 194, 216, 0.04) 0%, transparent 40%);
+  color: #fff;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 16px 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ヒーロー: 大胆なタイポグラフィ */
+.hero {
+  text-align: center;
+  padding: 16px 0 28px;
+  margin-bottom: 8px;
+}
+
+.heroTitle {
+  font-size: clamp(32px, 10vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #e0e8f0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroSub {
+  font-size: clamp(14px, 3.5vw, 18px);
+  color: #8b9bb4;
+  margin-top: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 選択プログレス: 5スロットを視覚化 */
+.progressSection {
+  margin-bottom: 28px;
+}
+
+.progressLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6a7a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.progressSlots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 8px;
+}
+
+.progressSlot {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0;
+  font: inherit;
+  cursor: default;
+}
+
+.progressSlotClickable {
+  cursor: pointer;
+}
+
+.progressSlotClickable:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 28px rgba(29, 185, 84, 0.45);
+}
+
+.progressSlotFilled {
+  border-color: #1db954;
+  background: rgba(29, 185, 84, 0.25);
+  box-shadow: 0 0 24px rgba(29, 185, 84, 0.35);
+}
+
+.progressSlotImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.progressSlotFallback {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1db954;
+}
+
+.progressSlotEmpty {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* 選択済みの推し: ラインアップ表示 */
+.selectedLineup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  min-height: 44px;
+}
+
+.selectedChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  background: rgba(29, 185, 84, 0.15);
+  border: 2px solid rgba(29, 185, 84, 0.5);
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(29, 185, 84, 0.2);
+}
+
+.selectedChipImg {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.selectedChipFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(29, 185, 84, 0.3);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.selectedChipName {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.selectedChipRemove {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.selectedChipRemove:hover {
+  background: #ff6b6b;
+  transform: scale(1.1);
+}
+
+/* セクション見出し */
+.sectionTitle {
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 20px;
+  letter-spacing: -0.02em;
+}
+
+.sectionTitleSearch {
+  font-size: 16px;
+  font-weight: 700;
+  color: #8b9bb4;
+  margin: 0 0 20px;
+}
+
+/* アーティストカード: 迫力のカバー型 */
+.artistGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .artistGrid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (min-width: 768px) {
+  .artistGrid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .artistGrid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 28px;
+  }
+}
+
+.artistCard {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.artistCard:hover {
+  transform: scale(1.05);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.artistCardSelected {
+  border-color: #1db954;
+  box-shadow: 0 0 0 2px #1db954, 0 0 32px rgba(29, 185, 84, 0.4);
+}
+
+.artistCardDisabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.artistCardDisabled:hover {
+  transform: none;
+}
+
+.artistCardImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #1a1a1a;
+}
+
+.artistCardImageFallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  display: grid;
+  place-items: center;
+  color: #adc2d8;
+  font-weight: 800;
+  font-size: clamp(28px, 8vw, 42px);
+}
+
+.artistCardOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 70%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px 16px;
+}
+
+.artistCardName {
+  font-size: clamp(16px, 4vw, 20px);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artistCardAction {
+  margin-top: 12px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.artistCardActionAdd {
+  background: #adc2d8;
+  color: #0b0b0b;
+}
+
+.artistCardActionAdd:hover:not(:disabled) {
+  background: #c5d8eb;
+  transform: scale(1.03);
+}
+
+.artistCardActionSelected {
+  background: #1db954;
+  color: #fff;
+}
+
+.artistCardActionDisabled {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+/* 選択済みバッジ */
+.artistCardBadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1db954;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.5);
+}
+
+/* 検索結果用カード（正方形カバー） */
+.searchArtistCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0f0f0f;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.searchArtistCard:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.searchArtistCardSelected {
+  border-color: #1db954;
+  box-shadow: 0 0 20px rgba(29, 185, 84, 0.25);
+}
+
+.searchArtistImage {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: #1a1a1a;
+}
+
+.searchArtistImageFallback {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: #1a1a1a;
+  color: #adc2d8;
+  font-weight: 700;
+  font-size: clamp(20px, 5vw, 28px);
+}
+
+.searchArtistInfo {
+  padding: 16px;
+}
+
+.searchArtistName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.searchArtistToggle {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.searchArtistToggleAdd {
+  background: #adc2d8;
+  color: #0b0b0b;
+}
+
+.searchArtistToggleSelected {
+  background: #1db954;
+  color: #fff;
+}
+
+.searchArtistToggleDisabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* アクションバー */
+.actions {
+  flex-shrink: 0;
+  padding: 20px 16px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: rgba(0, 0, 0, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .actions {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.searchInput {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 20px;
+  font-size: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  margin-bottom: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.searchInput::placeholder {
+  color: #6a7a8a;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #1db954;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(29, 185, 84, 0.15);
+}
+
+.actionButtons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.ghostButton {
+  padding: 14px 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: #adc2d8;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ghostButton:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.primaryButton {
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(29, 185, 84, 0.35);
+}
+
+.primaryButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(29, 185, 84, 0.45);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.error {
+  color: #ff8c8c;
+  font-size: 14px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.mockHint {
+  color: #8b9bb4;
+  font-size: 13px;
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.emptyMessage {
+  color: #6a7a8a;
+  font-size: 15px;
+  text-align: center;
+  padding: 24px 16px;
+}
+
+/* スケルトン */
+.skeletonCard {
+  aspect-ratio: 1;
+  border-radius: 20px;
+  background: #1a1a1a;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonCard::after {
+    animation: none;
+    display: none;
+  }
+}

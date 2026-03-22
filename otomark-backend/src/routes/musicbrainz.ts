@@ -80,6 +80,101 @@ async function mbFetch(url: string): Promise<unknown> {
   return promise
 }
 
+// MusicBrainz からアーティストの SNS URL を取得（内部関数）
+async function fetchArtistSnsUrlsFromMb(spotifyId: string): Promise<{ urls: Record<string, string>; artistName?: string }> {
+  const spotifyUrl = `https://open.spotify.com/artist/${spotifyId}`
+
+  const query = 'url:"' + spotifyUrl + '"'
+  const urlData = await mbFetch(
+    `${MB_BASE}/url?query=${encodeURIComponent(query)}&fmt=json`
+  ) as { urls?: Array<{ 'relation-list'?: Array<{ relations?: Array<{ artist?: { id: string } }> }> }> }
+
+  const artistMbid = urlData?.urls?.[0]?.['relation-list']?.[0]?.relations?.[0]?.artist?.id
+  if (!artistMbid) return { urls: {} }
+
+  const artistData = await mbFetch(
+    `${MB_BASE}/artist/${artistMbid}?inc=url-rels&fmt=json`
+  ) as { name?: string; relations?: Array<{ type?: string; url?: { resource?: string }; ended?: boolean }> }
+
+  const urls: Record<string, string> = {}
+  for (const rel of artistData?.relations ?? []) {
+    if (rel.ended || !rel.url?.resource) continue
+    const r = rel.url.resource
+    if (rel.type === 'social network') {
+      if (/twitter\.com|x\.com/i.test(r)) urls.x = r.replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//i, 'https://x.com/')
+      else if (/instagram\.com/i.test(r)) urls.instagram = r
+      else if (/facebook\.com/i.test(r)) urls.facebook = r
+    } else if (rel.type === 'youtube' && /youtube\.com|youtu\.be/i.test(r)) {
+      urls.youtube = r
+    }
+  }
+
+  return { urls, artistName: artistData?.name }
+}
+
+/** 名前を正規化して比較用に（大文字小文字・前後空白・連続空白を統一） */
+function normalizeArtistName(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .normalize('NFKC')
+}
+
+/** MusicBrainz のアーティスト名と期待名が一致するか（誤登録を弾く） */
+function artistNameMatches(mbName: string | undefined, expectedName: string): boolean {
+  if (!mbName) return false
+  const a = normalizeArtistName(mbName)
+  const b = normalizeArtistName(expectedName)
+  if (a === b) return true
+  // 片方がもう片方の先頭一致（例: "aespa" vs "aespa (에스파)"）
+  if (a.startsWith(b) || b.startsWith(a)) return true
+  return false
+}
+
+// ===== GET /musicbrainz/artist-sns-urls =====
+musicbrainzRouter.get('/artist-sns-urls', async (c) => {
+  const spotifyId = c.req.query('spotifyId')
+  if (!spotifyId) return c.json({ error: 'spotifyId が必要です' }, 400)
+
+  try {
+    const result = await fetchArtistSnsUrlsFromMb(spotifyId)
+    return c.json(result)
+  } catch (e) {
+    console.warn('[MusicBrainz] artist-sns-urls error:', e)
+    return c.json({ urls: {} })
+  }
+})
+
+// ===== POST /musicbrainz/artist-sns-urls-batch =====
+// 複数アーティストの SNS URL を一括取得。名前一致するもののみ返す（誤登録を弾く）
+musicbrainzRouter.post(
+  '/artist-sns-urls-batch',
+  zValidator(
+    'json',
+    z.object({
+      artists: z.array(z.object({ id: z.string(), name: z.string() })).max(10),
+    })
+  ),
+  async (c) => {
+    const { artists } = c.req.valid('json')
+    const results: Record<string, { urls: Record<string, string>; artistName?: string }> = {}
+
+    for (const { id, name } of artists) {
+      try {
+        const r = await fetchArtistSnsUrlsFromMb(id)
+        if (Object.keys(r.urls).length === 0) continue
+        if (!artistNameMatches(r.artistName, name)) continue
+        results[id] = r
+      } catch {
+        // スキップ
+      }
+    }
+
+    return c.json({ artists: results })
+  }
+)
+
 // ===== GET /musicbrainz/search =====
 musicbrainzRouter.get(
   '/search',

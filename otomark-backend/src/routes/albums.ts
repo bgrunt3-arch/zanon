@@ -37,12 +37,10 @@ albumsRouter.get('/', async (c) => {
        a.id, a.title, a.cover_url, a.release_date, a.genres,
        ar.id AS artist_id, ar.name AS artist_name,
        ROUND(AVG(m.score)::numeric, 2) AS avg_score,
-       COUNT(DISTINCT m.id) AS marks_count,
-       COUNT(DISTINCT r.id) AS reviews_count
+       COUNT(DISTINCT m.id) AS marks_count
      FROM albums a
      JOIN artists ar ON ar.id = a.artist_id
      LEFT JOIN marks   m ON m.album_id = a.id AND m.score IS NOT NULL
-     LEFT JOIN reviews r ON r.mark_id  = m.id
      ${where}
      GROUP BY a.id, ar.id
      ORDER BY marks_count DESC
@@ -61,12 +59,10 @@ albumsRouter.get('/:albumId', async (c) => {
     `SELECT
        a.*, ar.id AS artist_id, ar.name AS artist_name, ar.image_url AS artist_image,
        ROUND(AVG(m.score)::numeric, 2) AS avg_score,
-       COUNT(DISTINCT m.id)  AS marks_count,
-       COUNT(DISTINCT r.id)  AS reviews_count
+       COUNT(DISTINCT m.id)  AS marks_count
      FROM albums a
      JOIN artists ar ON ar.id = a.artist_id
      LEFT JOIN marks   m ON m.album_id = a.id AND m.score IS NOT NULL
-     LEFT JOIN reviews r ON r.mark_id  = m.id
      WHERE a.id = $1
      GROUP BY a.id, ar.id`,
     [albumId]
@@ -80,19 +76,7 @@ albumsRouter.get('/:albumId', async (c) => {
     [albumId]
   )
 
-  // 最新レビュー5件
-  const reviews = await queryMany(
-    `SELECT r.id, r.body, r.likes_count, r.created_at, m.score,
-            u.username, u.display_name, u.avatar_url
-     FROM reviews r
-     JOIN marks m ON m.id = r.mark_id
-     JOIN users u ON u.id = r.user_id
-     WHERE m.album_id = $1
-     ORDER BY r.created_at DESC LIMIT 5`,
-    [albumId]
-  )
-
-  return c.json({ ...album, tracks, reviews })
+  return c.json({ ...album, tracks })
 })
 
 // =============================================
@@ -179,12 +163,10 @@ rankingRouter.get('/albums', async (c) => {
        a.id, a.title, a.cover_url, a.genres,
        ar.id AS artist_id, ar.name AS artist_name,
        ROUND(AVG(m.score)::numeric, 2) AS avg_score,
-       COUNT(DISTINCT m.id) AS marks_count,
-       COUNT(DISTINCT r.id) AS reviews_count
+       COUNT(DISTINCT m.id) AS marks_count
      FROM albums a
      JOIN artists ar ON ar.id = a.artist_id
      JOIN marks   m  ON m.album_id = a.id AND m.score IS NOT NULL ${periodFilter}
-     LEFT JOIN reviews r ON r.mark_id = m.id
      WHERE 1=1 ${genreFilter}
      GROUP BY a.id, ar.id
      HAVING COUNT(DISTINCT m.id) >= 3

@@ -1,0 +1,2 @@
+- 1ユーザーにつき、アーティストは「最大5人まで」しか保存できないバリデーションを徹底。
+- `user_faves` テーブルに SpotifyのArtist ID, Name, ImageURL を保存する構造にする。

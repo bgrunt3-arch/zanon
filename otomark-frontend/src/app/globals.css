@@ -1,85 +1,137 @@
-@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
-
+/* 画面サイズに合わせて全体が拡大縮小するスケーリング設計 */
 :root {
-  --bg: #0a0a0f;
-  --surface: #13131a;
-  --surface2: #1c1c28;
-  --surface3: #252535;
-  --border: #2a2a3d;
-  --accent: #c8ff3e;
-  --accent2: #ff6b6b;
-  --accent3: #7c6fff;
-  --text: #f0f0f5;
-  --text2: #9090a8;
-  --text3: #606078;
-  --gold: #f5c842;
-  --radius: 12px;
+  /* 基準: 375px 幅で 1、それに応じてスケール */
+  --scale: min(1.4, max(0.75, 100vw / 375));
+
+  /* 余白: viewport に比例 */
+  --spacing-xs: clamp(4px, 1.2vw, 10px);
+  --spacing-sm: clamp(6px, 2vw, 16px);
+  --spacing-md: clamp(10px, 2.8vw, 24px);
+  --spacing-lg: clamp(14px, 3.5vw, 32px);
+  --spacing-xl: clamp(18px, 4.5vw, 40px);
+  --spacing-2xl: clamp(22px, 5.5vw, 48px);
+
+  /* フォント: viewport に比例 */
+  --font-xs: clamp(9px, 2.4vw, 14px);
+  --font-sm: clamp(10px, 2.8vw, 15px);
+  --font-base: clamp(12px, 3.2vw, 17px);
+  --font-md: clamp(13px, 3.5vw, 18px);
+  --font-lg: clamp(15px, 4vw, 22px);
+  --font-xl: clamp(17px, 4.5vw, 26px);
+  --font-2xl: clamp(19px, 5.2vw, 30px);
+
+  /* 角丸 */
+  --radius-sm: clamp(5px, 1.5vw, 12px);
+  --radius-md: clamp(6px, 2vw, 16px);
+  --radius-lg: clamp(8px, 2.5vw, 20px);
+  --radius-xl: clamp(10px, 3vw, 24px);
+
+  /* ギャップ */
+  --gap-sm: clamp(6px, 2vw, 14px);
+  --gap-md: clamp(8px, 2.5vw, 18px);
+  --gap-lg: clamp(10px, 3.2vw, 28px);
+
+  /* アイコン・アバター等のサイズ */
+  --icon-sm: clamp(18px, 5vw, 24px);
+  --icon-md: clamp(24px, 6.5vw, 32px);
+  --icon-lg: clamp(48px, 13vw, 72px);
+  --avatar-sm: clamp(24px, 6.5vw, 32px);
+  --avatar-md: clamp(48px, 13vw, 72px);
+  --avatar-lg: clamp(56px, 15vw, 88px);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-html { scroll-behavior: smooth; }
+html {
+  /* ルートフォントを viewport に比例させ、rem ベースの要素が一括スケール */
+  font-size: clamp(12px, 3.2vw, 18px);
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  min-width: 280px;
+}
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Noto Sans JP', sans-serif;
-  font-weight: 400;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  background: #000000;
+  color: #ffffff;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ノイズオーバーレイ */
-body::before {
-  content: '';
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mainWithNav {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(clamp(72px, 20vw, 96px) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ナビ非表示ページ（ログイン/コールバック/オンボーディング）は下部余白を最小化 */
+.mainWithNav.mainWithNavNoBottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mainWithNav > main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bottomNavWrapper {
   position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  transition: transform 0.25s ease-out;
+}
+
+.bottomNavWrapper.hidden {
+  transform: translateY(100%);
+}
+
+.bottomNavWrapper.navPageHidden {
+  display: none;
+}
+
+.mockModeBadge {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 1000;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #1db954;
+  background: rgba(29, 185, 84, 0.18);
+  color: #8ff0b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   pointer-events: none;
-  z-index: 9999;
-  opacity: 0.4;
-}
-
-a { color: inherit; text-decoration: none; }
-button { cursor: pointer; font-family: inherit; }
-input, textarea { font-family: inherit; }
-
-/* スクロールバー */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-
-/* フォーカスリング */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* アニメーション */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.4); opacity: 0.7; }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.animate-fade-up { animation: fadeUp 0.3s ease both; }
-
-/* スマホ：ボトムタブ分の余白 */
-@media (max-width: 640px) {
-  body {
-    padding-bottom: 70px;
-  }
-}
-
-/* ローディングスピナー */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid var(--surface3);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
 }
