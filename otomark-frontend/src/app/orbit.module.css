@@ -1698,20 +1698,21 @@ a.artistCard:hover {
 
 /* YouTube カード */
 .youtubeCard {
-  padding-bottom: 0;
-  overflow: hidden;
+  padding: 14px 16px 0;
 }
 
 .youtubeThumbnailBtn {
   position: relative;
   display: block;
-  width: calc(100% + 32px);
-  margin: 12px -16px 0;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 14px;
   padding: 0;
   border: none;
   background: #000;
   cursor: pointer;
   aspect-ratio: 16 / 9;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -1738,10 +1739,14 @@ a.artistCard:hover {
 }
 
 .youtubeEmbed {
-  width: calc(100% + 32px);
-  margin: 12px -16px 0;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 14px;
   aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
 }
+
 
 .youtubeIframe {
   width: 100%;
