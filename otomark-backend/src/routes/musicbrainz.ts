@@ -80,20 +80,10 @@ async function mbFetch(url: string): Promise<unknown> {
   return promise
 }
 
-// MusicBrainz からアーティストの SNS URL を取得（内部関数）
-async function fetchArtistSnsUrlsFromMb(spotifyId: string): Promise<{ urls: Record<string, string>; artistName?: string }> {
-  const spotifyUrl = `https://open.spotify.com/artist/${spotifyId}`
-
-  const query = 'url:"' + spotifyUrl + '"'
-  const urlData = await mbFetch(
-    `${MB_BASE}/url?query=${encodeURIComponent(query)}&fmt=json`
-  ) as { urls?: Array<{ 'relation-list'?: Array<{ relations?: Array<{ artist?: { id: string } }> }> }> }
-
-  const artistMbid = urlData?.urls?.[0]?.['relation-list']?.[0]?.relations?.[0]?.artist?.id
-  if (!artistMbid) return { urls: {} }
-
+/** MusicBrainz アーティストのURL relationsからSNS URLを抽出 */
+async function extractSnsUrlsFromMbid(mbid: string): Promise<{ urls: Record<string, string>; artistName?: string }> {
   const artistData = await mbFetch(
-    `${MB_BASE}/artist/${artistMbid}?inc=url-rels&fmt=json`
+    `${MB_BASE}/artist/${mbid}?inc=url-rels&fmt=json`
   ) as { name?: string; relations?: Array<{ type?: string; url?: { resource?: string }; ended?: boolean }> }
 
   const urls: Record<string, string> = {}
@@ -110,6 +100,35 @@ async function fetchArtistSnsUrlsFromMb(spotifyId: string): Promise<{ urls: Reco
   }
 
   return { urls, artistName: artistData?.name }
+}
+
+// MusicBrainz からアーティストの SNS URL を取得（内部関数）
+async function fetchArtistSnsUrlsFromMb(spotifyId: string, artistName?: string): Promise<{ urls: Record<string, string>; artistName?: string }> {
+  // 1. Spotify URL でMBID検索
+  const spotifyUrl = `https://open.spotify.com/artist/${spotifyId}`
+  const query = 'url:"' + spotifyUrl + '"'
+  const urlData = await mbFetch(
+    `${MB_BASE}/url?query=${encodeURIComponent(query)}&fmt=json`
+  ) as { urls?: Array<{ 'relation-list'?: Array<{ relations?: Array<{ artist?: { id: string } }> }> }> }
+
+  const mbidFromSpotify = urlData?.urls?.[0]?.['relation-list']?.[0]?.relations?.[0]?.artist?.id
+  if (mbidFromSpotify) {
+    return extractSnsUrlsFromMbid(mbidFromSpotify)
+  }
+
+  // 2. フォールバック: アーティスト名で検索
+  if (!artistName) return { urls: {} }
+  const nameQuery = `artist:"${artistName}"`
+  const nameData = await mbFetch(
+    `${MB_BASE}/artist?query=${encodeURIComponent(nameQuery)}&limit=3&fmt=json`
+  ) as { artists?: Array<{ id: string; name: string; score?: number }> }
+
+  const candidates = nameData?.artists ?? []
+  // スコアが高くかつ名前が一致するものを選ぶ
+  const match = candidates.find((a) => artistNameMatches(a.name, artistName))
+  if (!match) return { urls: {} }
+
+  return extractSnsUrlsFromMbid(match.id)
 }
 
 /** 名前を正規化して比較用に（大文字小文字・前後空白・連続空白を統一） */
@@ -162,9 +181,10 @@ musicbrainzRouter.post(
 
     for (const { id, name } of artists) {
       try {
-        const r = await fetchArtistSnsUrlsFromMb(id)
+        const r = await fetchArtistSnsUrlsFromMb(id, name)
         if (Object.keys(r.urls).length === 0) continue
-        if (!artistNameMatches(r.artistName, name)) continue
+        // Spotify URL直接ヒットの場合のみ名前検証（名前検索フォールバック時は既にマッチ済み）
+        if (r.artistName && !artistNameMatches(r.artistName, name)) continue
         results[id] = r
       } catch {
         // スキップ
