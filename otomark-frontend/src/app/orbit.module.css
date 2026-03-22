@@ -1698,6 +1698,8 @@ a.artistCard:hover {
 
 /* YouTube カード */
 .youtubeCard {
+  height: auto !important;
+  overflow: visible !important;
   padding: 14px 16px 0;
 }
 
