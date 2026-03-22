@@ -243,23 +243,7 @@ export async function fetchRecentSnsPosts(
         }
       }
 
-      // X / Instagram: プロフィールリンクカード
-      for (const platform of ['x', 'instagram'] as SnsPlatform[]) {
-        const url = urls[platform]
-        if (!url) continue
-        const handle = extractHandle(url, platform)
-        const label: Record<string, string> = { x: 'X', instagram: 'Instagram' }
-        results.push({
-          artistId,
-          artistName,
-          handle,
-          avatarUrl: null,
-          content: `${label[platform]} でフォロー`,
-          postedAt: '公式アカウント',
-          platform,
-          url,
-        })
-      }
+      // X / Instagram: 一時非表示
 
       return results
     })
