@@ -6,8 +6,6 @@
  * 320px: 最小幅 (iPhone SE 1st gen等)
  */
 .screen {
-  min-height: 100vh;
-  min-height: 100dvh;
   width: 100%;
   max-width: 100vw;
   height: 100%;
@@ -22,6 +20,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -29,12 +28,13 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 0 !important;
+  padding: 0;
 }
 
 .homeHeader {
   flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-md) 0;
 }
 
 .homeFeedScroll {
@@ -42,6 +42,9 @@
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding-top: 0;
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
 }
 
 .center {
@@ -282,6 +285,100 @@
   text-align: center;
 }
 
+/* Spotify フィード: ディスコグラフィ縦リスト（Spotifyアプリ風） */
+.discographyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.discographyListItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+  border-radius: 8px;
+}
+
+.discographyListItem:last-child {
+  border-bottom: none;
+}
+
+.discographyListItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.discographyListCover {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #1a1a1a;
+}
+
+.discographyListCoverFallback {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #1a1a1a;
+  display: grid;
+  place-items: center;
+  color: #adc2d8;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.discographyListInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.discographyListTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.discographyListMeta {
+  font-size: 13px;
+  color: #8b9bb4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discographySeeAll {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #adc2d8;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.discographySeeAll:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
 /* Spotify フィード: ディスコグラフィ（正方形カバー + タイトル + 年・アーティスト） */
 .discographyGrid {
   display: grid;
@@ -420,18 +517,6 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.cardRow::-webkit-scrollbar {
-  height: 6px;
-}
-
-.cardRow::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.cardRow::-webkit-scrollbar-thumb {
-  background: #404040;
-  border-radius: 3px;
-}
 
 /* Spotify-style track card */
 .spotifyCard {
@@ -644,7 +729,18 @@
 .feed {
   display: grid;
   grid-auto-rows: minmax(130px, 1fr);
-  gap: var(--gap-md);
+  gap: clamp(12px, 3vw, 24px);
+}
+
+/* 検索結果: grid の 1fr 行がスクロール領域で潰れるのを避け、縦リストで積む */
+.searchResultsList {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 2vw, 14px);
+}
+
+.searchResultsList .post {
+  flex-shrink: 0;
 }
 
 .feedSection {
@@ -806,7 +902,7 @@ a.post {
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  border-left: 3px solid #1db954;
+  border-left: 3px solid #ff4040;
 }
 
 .post.snsBlock {
@@ -1254,94 +1350,57 @@ a.artistCard:hover {
 /* Bottom nav: フローティング・ガラス風ドック */
 .bottomNav {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  padding: 0 14px calc(12px + env(safe-area-inset-bottom, 0px));
-  padding-left: max(14px, env(safe-area-inset-left, 0px));
-  padding-right: max(14px, env(safe-area-inset-right, 0px));
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .bottomNavDock {
-  pointer-events: auto;
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
-  flex: 1;
-  max-width: min(400px, 100%);
-  gap: 4px;
-  padding: 10px 12px 12px;
-  border-radius: 24px;
-  background: rgba(8, 8, 11, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 8px 40px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(0, 0, 0, 0.4) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  backdrop-filter: blur(22px) saturate(1.25);
-  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  justify-content: space-around;
+  padding: 8px 0 4px;
 }
 
 .bottomNavLink {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
-  min-width: 0;
-  padding: 12px 10px;
-  min-height: clamp(48px, 14vw, 56px);
-  color: #7a8a9e;
+  gap: 4px;
+  padding: 6px 4px;
+  color: #aaa;
   text-decoration: none;
-  border-radius: 20px;
-  border: 1px solid transparent;
-  transition:
-    color 0.22s ease,
-    background 0.22s ease,
-    border-color 0.22s ease,
-    box-shadow 0.22s ease,
-    transform 0.18s ease;
-}
-
-.bottomNavLink:hover {
-  color: #c5d4e8;
-  background: rgba(255, 255, 255, 0.06);
+  transition: color 0.15s ease;
 }
 
 .bottomNavLink:active {
-  transform: scale(0.97);
+  opacity: 0.7;
 }
 
 .bottomNavLinkActive {
   color: #fff;
-  background: linear-gradient(165deg, rgba(29, 185, 84, 0.28) 0%, rgba(29, 185, 84, 0.06) 100%);
-  border-color: rgba(29, 185, 84, 0.45);
-  box-shadow:
-    0 0 28px rgba(29, 185, 84, 0.22),
-    0 0 0 1px rgba(29, 185, 84, 0.15) inset;
 }
 
 .bottomNavIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(28px, 7.5vw, 32px);
-  height: clamp(28px, 7.5vw, 32px);
+  width: 24px;
+  height: 24px;
 }
 
 .bottomNavIcon svg {
   width: 100%;
   height: 100%;
-  stroke-width: 2.1;
-  transition: stroke 0.2s ease, filter 0.2s ease;
 }
 
-.bottomNavLinkActive .bottomNavIcon svg {
-  stroke: #1ed760;
-  filter: drop-shadow(0 0 10px rgba(30, 215, 96, 0.45));
+.bottomNavLabel {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .toolbar {
@@ -1372,17 +1431,29 @@ a.artistCard:hover {
   border-color: #1db954;
 }
 
+.feedTabOuter {
+  overflow: hidden;
+  max-height: 80px;
+  opacity: 1;
+  transition: max-height 0.25s ease-out, opacity 0.2s ease;
+}
+
+.feedTabOuterHidden {
+  max-height: 0;
+  opacity: 0;
+}
+
 .feedTabRow {
   display: flex;
   gap: var(--gap-sm);
   padding: var(--spacing-xs) 0 var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
+  margin: 0;
 }
 
 .feedTabButton {
-  border: 1px solid #2e2e2e;
-  background: transparent;
-  color: #adc2d8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
   border-radius: 999px;
   padding: var(--spacing-sm) var(--spacing-lg);
   min-height: clamp(36px, 10vw, 44px);
@@ -1398,10 +1469,25 @@ a.artistCard:hover {
   border-color: #4a4a4a;
 }
 
-.feedTabButtonActive {
-  background: #adc2d8;
-  color: #0b0b0b;
-  border-color: #adc2d8;
+.feedTabButtonActive,
+.feedTabButtonActive:hover {
+  background: rgba(29, 185, 84, 0.2);
+  color: #1db954;
+  border-color: rgba(29, 185, 84, 0.4);
+}
+
+.feedTabButtonYoutube,
+.feedTabButtonYoutube:hover {
+  background: rgba(255, 0, 0, 0.15);
+  color: #ff4040;
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.feedTabButtonSpotify,
+.feedTabButtonSpotify:hover {
+  background: rgba(29, 185, 84, 0.2);
+  color: #1db954;
+  border-color: rgba(29, 185, 84, 0.4);
 }
 
 .filterRowWrapper {
@@ -1420,6 +1506,9 @@ a.artistCard:hover {
   position: relative;
   flex-shrink: 0;
   cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .filterIconWrapper:active {
@@ -1555,6 +1644,229 @@ a.artistCard:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* 人気曲フィードリスト */
+.trackFeedList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.trackFeedItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  border-radius: 6px;
+}
+
+.trackFeedItem:last-child {
+  border-bottom: none;
+}
+
+.trackFeedItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.trackFeedItemActive .trackFeedTitle {
+  color: #1ed760;
+}
+
+.trackFeedCover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.trackFeedCoverFallback {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: #2a2a2a;
+  flex-shrink: 0;
+}
+
+.trackFeedInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trackFeedTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.trackFeedBody {
+  font-size: 12px;
+  color: #b3b3b3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackFeedPlayIcon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.trackFeedItem:hover .trackFeedPlayIcon {
+  color: #fff;
+}
+
+/* 再生中アニメーションバー */
+.trackFeedPlaying {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.trackFeedPlaying span {
+  display: block;
+  width: 3px;
+  background: #1ed760;
+  border-radius: 2px;
+  animation: trackFeedBar 0.8s ease-in-out infinite alternate;
+}
+
+.trackFeedPlaying span:nth-child(1) { height: 8px; animation-delay: 0s; }
+.trackFeedPlaying span:nth-child(2) { height: 14px; animation-delay: 0.2s; }
+.trackFeedPlaying span:nth-child(3) { height: 10px; animation-delay: 0.4s; }
+
+@keyframes trackFeedBar {
+  from { transform: scaleY(0.4); }
+  to   { transform: scaleY(1); }
+}
+
+/* Last.fm アーティストカード */
+.lastfmCard {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lastfmCardSkeleton {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.lastfmCardHeader {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.lastfmCardImg {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.lastfmCardImgFallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #2a2a2a;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #b3b3b3;
+  flex-shrink: 0;
+}
+
+.lastfmCardMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lastfmCardName {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lastfmCardStats {
+  display: flex;
+  gap: 16px;
+}
+
+.lastfmCardStat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lastfmCardStatLabel {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lastfmCardStatValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.lastfmCardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lastfmCardTag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1ed760;
+  background: rgba(30, 215, 96, 0.12);
+  border-radius: 100px;
+  padding: 3px 10px;
+  letter-spacing: 0.02em;
+}
+
+.lastfmCardBio {
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
 .discographyShowMore {
   margin-top: var(--spacing-md);
   padding: 0;
@@ -1615,6 +1927,34 @@ a.artistCard:hover {
   color: #adc2d8;
 }
 
+.filterIconRing {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+}
+
+.filterIconRing::before,
+.filterIconRing::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  pointer-events: none;
+}
+
+.filterIconRingActive::before {
+  border-color: rgba(173, 194, 216, 0.5);
+  animation: orbitHomePulse 2.8s ease-in-out infinite;
+}
+
+.filterIconRingActive::after {
+  inset: -9px;
+  border-color: rgba(173, 194, 216, 0.2);
+  animation: orbitHomePulse 2.8s ease-in-out infinite;
+  animation-delay: -1.4s;
+}
+
 .filterIcon {
   width: var(--icon-lg);
   height: var(--icon-lg);
@@ -1649,6 +1989,7 @@ a.artistCard:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 12px;
 }
 
 .filterButton {
@@ -1741,6 +2082,7 @@ a.artistCard:hover {
 }
 
 .youtubeEmbed {
+  position: relative;
   width: 100%;
   margin-top: 10px;
   margin-bottom: 14px;
@@ -1749,12 +2091,96 @@ a.artistCard:hover {
   overflow: hidden;
 }
 
+.youtubeCloseBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 
 .youtubeIframe {
   width: 100%;
   height: 100%;
   border: none;
   display: block;
+}
+
+/* YouTube 楽曲認識カード */
+.youtubeMusicCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.youtubeMusicLoading {
+  font-size: 12px;
+  color: #888;
+}
+
+.youtubeMusicCover {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.youtubeMusicInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.youtubeMusicTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.youtubeMusicArtist {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.youtubeMusicSpotifyBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #1DB954;
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* モック切り替えトグル */
@@ -1983,7 +2409,7 @@ a.artistCard:hover {
   margin-bottom: var(--spacing-xs);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  background: linear-gradient(180deg, rgba(5, 5, 8, 0.94) 0%, rgba(5, 5, 8, 0.72) 100%);
+  background: transparent;
 }
 
 .homeTopBar {
@@ -2028,9 +2454,9 @@ a.artistCard:hover {
   height: 44px;
   padding: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(29, 185, 84, 0.1);
+  border: 2px solid rgba(29, 185, 84, 0.25);
+  color: #1db954;
   text-decoration: none;
   transition:
     border-color 0.2s,
@@ -2080,13 +2506,13 @@ a.artistCard:hover {
 /* ホーム: アーティストレール */
 .homeArtistRail {
   margin-top: 2px;
-  margin-bottom: 2px;
+  margin-bottom: var(--spacing-md);
 }
 
 .screen.homeScreen .homeFilterStrip {
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 15, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 14px 12px 16px;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.35),
@@ -2197,9 +2623,24 @@ a.artistCard:hover {
 }
 
 .screen.homeScreen .homeFeedTabTrack .feedTabButtonActive {
-  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(29, 185, 84, 0.35);
+  background: rgba(29, 185, 84, 0.2);
+  color: #1db954;
+  border-color: rgba(29, 185, 84, 0.4);
+  box-shadow: none;
+}
+
+.screen.homeScreen .homeFeedTabTrack .feedTabButtonYoutube {
+  background: rgba(255, 0, 0, 0.15);
+  color: #ff4040;
+  border-color: rgba(255, 0, 0, 0.3);
+  box-shadow: none;
+}
+
+.screen.homeScreen .homeFeedTabTrack .feedTabButtonSpotify {
+  background: rgba(29, 185, 84, 0.2);
+  color: #1db954;
+  border-color: rgba(29, 185, 84, 0.4);
+  box-shadow: none;
 }
 
 .homeErrorCard {
@@ -2246,7 +2687,7 @@ a.artistCard:hover {
 }
 
 .screen.homeScreen .feed {
-  gap: var(--gap-lg);
+  gap: var(--spacing-lg);
 }
 
 .screen.homeScreen .feedSection {
@@ -2261,7 +2702,7 @@ a.artistCard:hover {
 }
 
 .screen.homeScreen .post.snsBlock {
-  border-left: 3px solid #1db954;
+  border-left: 3px solid #ff4040;
 }
 
 .screen.homeScreen .skeletonPost {
@@ -2347,6 +2788,79 @@ a.artistCard:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   position: relative;
   z-index: 1;
+}
+
+/* ロード中: リングをスピン */
+.emptyFeedOrbLoading .emptyFeedRing:first-of-type {
+  animation: orbitHomeSpin 1.4s linear infinite;
+  border-color: rgba(29, 185, 84, 0.7);
+}
+
+.emptyFeedOrbLoading .emptyFeedRing:nth-of-type(2) {
+  animation: orbitHomeSpin 2s linear infinite reverse;
+  border-color: rgba(29, 185, 84, 0.35);
+}
+
+.emptyFeedOrbLoading .emptyFeedDot {
+  animation: orbitHomePulse 1s ease-in-out infinite;
+}
+
+@keyframes orbitHomeSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ローディング オービットアニメーション */
+.orbitLoader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+.orbitLoaderInner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+}
+
+.orbitLoaderDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1db954;
+  box-shadow: 0 0 12px rgba(29, 185, 84, 0.9);
+  z-index: 2;
+  animation: orbitHomePulse 1.8s ease-in-out infinite;
+}
+
+.orbitLoaderRing {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(29, 185, 84, 0.4);
+  animation: orbitHomePulse 1.8s ease-in-out infinite;
+}
+
+.orbitLoaderRing:nth-child(1) {
+  width: 36px;
+  height: 36px;
+  animation-delay: 0s;
+}
+
+.orbitLoaderRing:nth-child(2) {
+  width: 56px;
+  height: 56px;
+  border-color: rgba(29, 185, 84, 0.25);
+  animation-delay: -0.6s;
+}
+
+.orbitLoaderRing:nth-child(3) {
+  width: 76px;
+  height: 76px;
+  border-color: rgba(29, 185, 84, 0.12);
+  animation-delay: -1.2s;
 }
 
 @keyframes orbitHomePulse {

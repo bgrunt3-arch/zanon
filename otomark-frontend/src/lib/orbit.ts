@@ -381,8 +381,20 @@ function getSpotifyProxyUrl(path: string): string {
 // in-flight 重複排除: 同一URLへの並行リクエストを1本に束ねる
 const _inflight = new Map<string, Promise<Response>>()
 
-/** GET 系の共通処理。429 のとき Retry-After / バックオフで数回だけ待って再試行 */
-async function spotifyGet(path: string, token: string): Promise<Response> {
+// リフレッシュの並走防止: 複数の401が同時に来ても1回だけリフレッシュする
+let _refreshPromise: Promise<string | null> | null = null
+
+function refreshOnce(): Promise<string | null> {
+  if (!_refreshPromise) {
+    _refreshPromise = refreshAccessToken().finally(() => {
+      _refreshPromise = null
+    })
+  }
+  return _refreshPromise
+}
+
+/** GET 系の共通処理。429 のとき Retry-After / バックオフで数回だけ待って再試行。401 時は自動リフレッシュ＆リトライ */
+export async function spotifyGet(path: string, token: string): Promise<Response> {
   // ブラウザ→Spotify直叩きだと CORS で Retry-After が読めないことがあるため、
   // バックエンドのプロキシ経由で取得する。
   const url = getSpotifyProxyUrl(path)
@@ -398,11 +410,28 @@ async function spotifyGet(path: string, token: string): Promise<Response> {
   let lastRes: Response | null = null
 
   const doFetch = async (): Promise<Response> => {
+  let currentToken = token
   while (attempt < max) {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${currentToken}` },
     })
     lastRes = res
+
+    // 401: トークン期限切れ → シングルトンでリフレッシュして1回だけリトライ
+    if (res.status === 401) {
+      const newToken = await refreshOnce()
+      if (newToken) {
+        currentToken = newToken
+        const retried = await fetch(url, { headers: { Authorization: `Bearer ${newToken}` } })
+        lastRes = retried
+        return retried
+      }
+      // リフレッシュ失敗 → ログアウトしてログイン画面へ
+      clearAccessToken()
+      if (typeof window !== 'undefined') window.location.href = '/login'
+      return res
+    }
+
     if (res.status !== 429) return res
 
     // UI 表示用: 429 の Retry-After をその場で必ず保存。
@@ -495,7 +524,7 @@ export async function fetchAudioFeatures(
 }
 
 const CLIENT_ID = (process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ?? 'fd5502e75e274fdb917df77dbdcc568a').trim()
-const SCOPE = 'user-top-read user-read-private'
+const SCOPE = 'user-top-read user-read-private user-read-email streaming user-modify-playback-state user-read-recently-played user-library-read playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private'
 
 function getSpotifyRedirectUri(): string {
   const fromEnv = (process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI ?? '').trim()
@@ -510,10 +539,10 @@ function getSpotifyRedirectUri(): string {
 }
 
 const TOKEN_KEY = 'orbit.spotify.accessToken'
+const REFRESH_TOKEN_KEY = 'orbit.spotify.refreshToken'
 const PICKS_KEY = 'orbit.selectedArtists'
 const ACTIVE_ARTIST_KEY = 'orbit.feed.activeArtistId'
 const CODE_VERIFIER_KEY = 'orbit.spotify.codeVerifier'
-const FORBIDDEN_TOP_TRACKS_KEY = 'orbit.spotify.forbiddenTopTracksArtists'
 const ALBUMS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.albumsRateLimitedUntil'
 const TRACKS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.tracksRateLimitedUntil'
 const LAST_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.lastRateLimitedUntil'
@@ -522,25 +551,6 @@ const LAST_RATE_LIMIT_RETRY_AFTER_SEC_KEY = 'orbit.spotify.lastRetryAfterSec'
 // ヘッダ値を取れなかった場合のフォールバック（安全側で長め）
 const DEFAULT_429_FALLBACK_MS = 24 * 60 * 60 * 1000
 
-function getForbiddenTopTracksSet(): Set<string> {
-  try {
-    const raw = sessionStorage.getItem(FORBIDDEN_TOP_TRACKS_KEY)
-    if (!raw) return new Set()
-    const arr = JSON.parse(raw) as unknown
-    if (!Array.isArray(arr)) return new Set()
-    return new Set(arr.map(String))
-  } catch {
-    return new Set()
-  }
-}
-
-function saveForbiddenTopTracksSet(set: Set<string>): void {
-  try {
-    sessionStorage.setItem(FORBIDDEN_TOP_TRACKS_KEY, JSON.stringify([...set]))
-  } catch {
-    // ignore
-  }
-}
 
 // ---- API レスポンスキャッシュ (localStorage) ----
 const CACHE_TTL_SHORT = 60 * 60 * 1000 // 1時間: top tracks, me等
@@ -666,9 +676,13 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
     throw new Error(`Failed to exchange authorization code: ${bodyText}`)
   }
 
-  const data = (await res.json()) as { access_token?: string }
+  const data = (await res.json()) as { access_token?: string; refresh_token?: string }
   if (!data.access_token) {
     throw new Error('access_token not found in response')
+  }
+
+  if (data.refresh_token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
   }
 
   sessionStorage.removeItem(CODE_VERIFIER_KEY)
@@ -695,6 +709,39 @@ export function getAccessToken(): string | null {
 
 export function clearAccessToken(): void {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+/** リフレッシュトークンでアクセストークンを再取得し localStorage を更新する。失敗時は null を返す */
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+  if (!refreshToken || !CLIENT_ID) return null
+
+  try {
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: CLIENT_ID,
+    })
+    const res = await fetch(SPOTIFY_TOKEN_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
+    if (!res.ok) return null
+
+    const data = (await res.json()) as { access_token?: string; refresh_token?: string }
+    if (!data.access_token) return null
+
+    localStorage.setItem(TOKEN_KEY, data.access_token)
+    // Spotify は新しい refresh_token を返すことがある（ローテーション）
+    if (data.refresh_token) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
+    }
+    return data.access_token
+  } catch {
+    return null
+  }
 }
 
 export function saveSelectedArtists(artists: SpotifyArtist[]): void {
@@ -731,10 +778,6 @@ export function computeOrbitScore(params: {
 }): number {
   const { track, selectedArtists, overlapCount = 0 } = params
 
-  const popularity = typeof track.popularity === 'number' && Number.isFinite(track.popularity)
-    ? Math.max(0, Math.min(100, track.popularity))
-    : 50
-
   const pickIds = new Set(selectedArtists.map((a) => a.id))
   const trackArtistIds = new Set(track.artists.map((a) => a.id))
 
@@ -747,7 +790,7 @@ export function computeOrbitScore(params: {
   }
 
   const overlapBonus = Math.max(0, (overlapCount - 1) * 4)
-  const base = popularity * 0.4 + maxAffinity * 0.6 + overlapBonus
+  const base = 20 + maxAffinity * 0.6 + overlapBonus
   return Math.min(100, Math.max(0, Math.round(base)))
 }
 
@@ -764,10 +807,9 @@ export function computeOrbitLoyaltyScore(params: {
   countInTopTracks: number
   popularity: number
 }): number {
-  const { countInTopTracks, popularity } = params
+  const { countInTopTracks } = params
   if (countInTopTracks <= 0) return 0
-  const popularityNorm = Math.max(0, Math.min(100, popularity))
-  return countInTopTracks * (100 - popularityNorm)
+  return countInTopTracks * 50
 }
 
 /** トラックが top_tracks 内に出現する回数を返す */
@@ -834,56 +876,151 @@ export async function fetchTopArtists(token: string): Promise<SpotifyArtist[]> {
   return merged
 }
 
+/** Spotify Search の offset 上限（公式: Maximum 1000） */
+export const SPOTIFY_SEARCH_MAX_OFFSET = 1000
+
+/**
+ * Search API では `limit` クエリを送ると環境によってエラーになるため送らない。
+ * 未指定時のデフォルト件数（公式想定）に合わせてページングする。
+ */
+export const SPOTIFY_SEARCH_PAGE_SIZE = 20
+
+/** 初回検索でまとめて取る上限（limit クエリ無しのため複数回 offset で取得） */
+const SEARCH_AGGREGATE_MAX_ITEMS = 100
+const SEARCH_AGGREGATE_MAX_REQUESTS = 24
+
+export type AggregatedSearch<T> = {
+  items: T[]
+  /** 次の「さらに読み込む」用 offset（直近まで進んだ値） */
+  nextOffset: number
+  hasMore: boolean
+}
+
+/**
+ * 検索を offset だけ進めながら複数回叩き、1画面にまとめる（API が5件ずつ等でも対応）。
+ */
+export async function searchAllTracksAggregated(
+  token: string,
+  query: string,
+  options?: { maxItems?: number; startOffset?: number },
+): Promise<AggregatedSearch<SpotifyTrack>> {
+  const q = query.trim()
+  if (!q) return { items: [], nextOffset: 0, hasMore: false }
+
+  const maxItems = Math.min(options?.maxItems ?? SEARCH_AGGREGATE_MAX_ITEMS, 200)
+  let offset = Math.max(0, Math.min(SPOTIFY_SEARCH_MAX_OFFSET, options?.startOffset ?? 0))
+  const seen = new Set<string>()
+  const merged: SpotifyTrack[] = []
+  let lastBatchLen = 0
+  let requests = 0
+
+  while (
+    merged.length < maxItems &&
+    offset <= SPOTIFY_SEARCH_MAX_OFFSET &&
+    requests < SEARCH_AGGREGATE_MAX_REQUESTS
+  ) {
+    requests += 1
+    const batch = await searchAllTracks(token, q, offset)
+    lastBatchLen = batch.length
+    if (batch.length === 0) break
+    for (const t of batch) {
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      merged.push(t)
+      if (merged.length >= maxItems) break
+    }
+    offset += batch.length
+    if (merged.length >= maxItems) break
+  }
+
+  const hasMore = lastBatchLen > 0 && offset <= SPOTIFY_SEARCH_MAX_OFFSET
+  return { items: merged, nextOffset: offset, hasMore }
+}
+
+export async function searchArtistsAggregated(
+  token: string,
+  query: string,
+  options?: { maxItems?: number; startOffset?: number },
+): Promise<AggregatedSearch<SpotifyArtist>> {
+  if (!query.trim()) return { items: [], nextOffset: 0, hasMore: false }
+
+  const maxItems = Math.min(options?.maxItems ?? SEARCH_AGGREGATE_MAX_ITEMS, 200)
+  let offset = Math.max(0, Math.min(SPOTIFY_SEARCH_MAX_OFFSET, options?.startOffset ?? 0))
+  const seen = new Set<string>()
+  const merged: SpotifyArtist[] = []
+  let lastBatchLen = 0
+  let requests = 0
+
+  while (
+    merged.length < maxItems &&
+    offset <= SPOTIFY_SEARCH_MAX_OFFSET &&
+    requests < SEARCH_AGGREGATE_MAX_REQUESTS
+  ) {
+    requests += 1
+    const batch = await searchArtists(token, query, offset)
+    lastBatchLen = batch.length
+    if (batch.length === 0) break
+    for (const a of batch) {
+      if (seen.has(a.id)) continue
+      seen.add(a.id)
+      merged.push(a)
+      if (merged.length >= maxItems) break
+    }
+    offset += batch.length
+    if (merged.length >= maxItems) break
+  }
+
+  const hasMore = lastBatchLen > 0 && offset <= SPOTIFY_SEARCH_MAX_OFFSET
+  return { items: merged, nextOffset: offset, hasMore }
+}
+
 /**
  * アーティスト検索。モック時は MOCK_ARTISTS を名前・ジャンルでフィルタ。
+ * @param offset ページング用（0 始まり）。`SPOTIFY_SEARCH_PAGE_SIZE` ずつ進める。
  */
-export async function searchArtists(token: string, query: string): Promise<SpotifyArtist[]> {
-  const q = query.trim().toLowerCase()
+export async function searchArtists(
+  token: string,
+  query: string,
+  offset = 0,
+): Promise<SpotifyArtist[]> {
+  const raw = query.trim()
+  const q = raw.toLowerCase()
+  const off = Math.max(0, Math.min(SPOTIFY_SEARCH_MAX_OFFSET, offset))
+  const page = SPOTIFY_SEARCH_PAGE_SIZE
   if (isMockMode() || token === MOCK_ACCESS_TOKEN) {
-    if (!q) return MOCK_ARTISTS
-    return MOCK_ARTISTS.filter(
+    if (!q) return MOCK_ARTISTS.slice(off, off + page)
+    const filtered = MOCK_ARTISTS.filter(
       (a) =>
         a.name.toLowerCase().includes(q) || a.genres.some((g) => g.toLowerCase().includes(q)),
     )
+    return filtered.slice(off, off + page)
   }
   if (!q) return []
   // 1文字クエリは Spotify API が 400 を返すことがあるためスキップ
   if (q.length < 2) return []
 
-  const cacheKey = `orbit.cache.searchArtists.${q}`
-  const cached = cacheGet<SpotifyArtist[]>(cacheKey)
-  if (cached) return cached
-
-  const params = new URLSearchParams({
-    q,
-    type: 'artist',
-    limit: '50',
-  })
-  const hasJapanese = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(q)
-  if (hasJapanese) {
-    params.set('market', 'JP')
+  if (off === 0) {
+    const cacheKey = `orbit.cache.searchArtists.${q}`
+    const cached = cacheGet<SpotifyArtist[]>(cacheKey)
+    if (cached) return cached
   }
 
-  let res = await spotifyGet(`/search?${params.toString()}`, token)
+  const params = new URLSearchParams({ q: raw, type: 'artist' })
+  if (off > 0) params.set('offset', String(off))
+
+  const res = await spotifyGet(`/search?${params.toString()}`, token)
   if (!res.ok) {
     if (res.status === 429) return []
     const text = await res.text().catch(() => '')
     throw new Error(`Spotify API error (search-artists) ${res.status}: ${text}`)
   }
-  let data = (await res.json()) as { artists?: { items?: SpotifyArtist[] } }
-  let items = (data.artists?.items ?? []) as SpotifyArtist[]
+  const data = (await res.json()) as { artists?: { items?: SpotifyArtist[] } }
+  const items = (data.artists?.items ?? []) as SpotifyArtist[]
 
-  // 結果が空で日本語クエリの場合、market なしで再試行（カタログ差のフォールバック）
-  if (items.length === 0 && hasJapanese) {
-    params.delete('market')
-    res = await spotifyGet(`/search?${params.toString()}`, token)
-    if (res.ok) {
-      data = (await res.json()) as { artists?: { items?: SpotifyArtist[] } }
-      items = (data.artists?.items ?? []) as SpotifyArtist[]
-    }
+  if (off === 0 && items.length > 0) {
+    const cacheKey = `orbit.cache.searchArtists.${q}`
+    cacheSet(cacheKey, items, CACHE_TTL_SHORT)
   }
-
-  if (items.length > 0) cacheSet(cacheKey, items, CACHE_TTL_SHORT)
   return items
 }
 
@@ -1035,65 +1172,7 @@ export async function fetchArtistTopTracks(
     return mockResult()
   }
 
-  const cacheKey = `orbit.cache.artistTopTracks.${artistId}`
-  const cached = cacheGet<SpotifyTrack[]>(cacheKey)
-  if (cached) return cached
-
-  const forbidden = getForbiddenTopTracksSet()
-  if (forbidden.has(artistId)) return []
-
-  // 市場を増やすほど API 呼び出しが増え 429 になりやすいので最小限にする。
-  const markets: string[] = ['from_token']
-  const uniqueMarkets = [...new Set(markets)]
-
-  let lastStatus = 0
-  let lastText = ''
-
-  for (const market of uniqueMarkets) {
-    const res = await spotifyGet(
-      `/artists/${artistId}/top-tracks?market=${encodeURIComponent(market)}`,
-      token,
-    )
-
-    if (res.ok) {
-      const data = (await res.json()) as { tracks?: SpotifyTrack[] }
-      const tracks = (data.tracks ?? []) as SpotifyTrack[]
-      cacheSet(cacheKey, tracks, CACHE_TTL_SHORT)
-      return tracks
-    }
-
-    lastText = (await res.text().catch(() => '')) || ''
-    lastStatus = res.status
-
-    // 認証切れは即ユーザーに伝える
-    if (res.status === 401) {
-      throw new Error(`Spotify API error (artist top-tracks) ${res.status}: ${lastText}`)
-    }
-
-    // 429: レート制限フラグを立ててモックにフォールバック
-    if (res.status === 429) {
-      const until = Date.now() + retryAfterMs(res, DEFAULT_429_FALLBACK_MS)
-      setRateLimitedUntil(TRACKS_RATE_LIMIT_UNTIL_KEY, until)
-      return mockResult()
-    }
-
-    // 403 はこのアーティストはライセンス的に弾かれている可能性が高いので空にして以後再試行しない
-    if (res.status !== 403 && res.status !== 404) {
-      throw new Error(`Spotify API error (artist top-tracks) ${res.status}: ${lastText}`)
-    }
-
-    if (res.status === 403) {
-      forbidden.add(artistId)
-      saveForbiddenTopTracksSet(forbidden)
-      return []
-    }
-  }
-
-  if (lastStatus === 429) {
-    const until = Date.now() + 60_000
-    setRateLimitedUntil(TRACKS_RATE_LIMIT_UNTIL_KEY, until)
-    return mockResult()
-  }
+  // /artists/{id}/top-tracks は Development Mode では利用不可（2026年2月〜）
   return []
 }
 
@@ -1134,17 +1213,6 @@ export async function fetchArtistRecentAlbums(
   // 429 が出たら他 market は試さずこの推しをスキップする（レート制限を悪化させない）。
   if (isRateLimited(ALBUMS_RATE_LIMIT_UNTIL_KEY)) return mockAlbums()
 
-  const markets: string[] = []
-  if (userCountry && /^[A-Z]{2}$/i.test(userCountry.trim())) {
-    markets.push(userCountry.trim().toUpperCase())
-  } else {
-    markets.push('US')
-  }
-
-  const uniqueMarkets = [...new Set(markets)]
-
-  const includeGroups = 'album,single'
-
   const toAlbumItem = (a: any) => ({
     id: String(a.id),
     name: a.name ?? null,
@@ -1153,53 +1221,44 @@ export async function fetchArtistRecentAlbums(
     images: a.images ?? null,
   })
 
-  for (const market of uniqueMarkets) {
-    const params = new URLSearchParams({
-      include_groups: includeGroups,
-      limit: String(Math.min(50, limit)),
-      market,
-      offset: '0',
-    })
-    const res = await spotifyGet(`/artists/${artistId}/albums?${params.toString()}`, token)
+  const allItems: ReturnType<typeof toAlbumItem>[] = []
+  let nextPath: string | null = `/artists/${artistId}/albums?include_groups=album%2Csingle`
+
+  while (nextPath) {
+    const res = await spotifyGet(nextPath, token)
+
     if (!res.ok) {
-      // 401 は即ユーザーに伝える
+      const text = await res.text().catch(() => '')
       if (res.status === 401) {
-        const text = await res.text().catch(() => '')
-        throw new Error(`Spotify API error (artist albums) ${res.status}: ${text}`)
+        throw new Error(`Spotify API error (artist albums) 401: ${text}`)
       }
       if (res.status === 429) {
         const until = Date.now() + retryAfterMs(res, DEFAULT_429_FALLBACK_MS)
         setRateLimitedUntil(ALBUMS_RATE_LIMIT_UNTIL_KEY, until)
-        return mockAlbums()
+        return allItems.length > 0 ? allItems : mockAlbums()
       }
-      continue
+      console.warn(`[Spotify albums] ${res.status} for artist ${artistId}:`, text)
+      break
     }
 
-    const data = (await res.json()) as { items?: Array<any> }
-    const result = (data.items ?? []).map(toAlbumItem)
-    cacheSet(cacheKey, result, CACHE_TTL_LONG)
-    return result
+    const data = (await res.json()) as { items?: Array<any>; next?: string | null }
+    allItems.push(...(data.items ?? []).map(toAlbumItem))
+
+    // next は完全URL（https://api.spotify.com/v1/...）なので、パス+クエリ部分だけ抽出
+    if (data.next) {
+      try {
+        const u = new URL(data.next)
+        nextPath = `${u.pathname.replace('/v1', '')}${u.search}`
+      } catch {
+        nextPath = null
+      }
+    } else {
+      nextPath = null
+    }
   }
 
-  // market なし最終フォールバック
-  const params = new URLSearchParams({
-    include_groups: includeGroups,
-    limit: String(Math.min(50, limit)),
-    offset: '0',
-  })
-  const res = await spotifyGet(`/artists/${artistId}/albums?${params.toString()}`, token)
-  if (!res.ok) {
-    if (res.status === 429) {
-      const until = Date.now() + retryAfterMs(res, DEFAULT_429_FALLBACK_MS)
-      setRateLimitedUntil(ALBUMS_RATE_LIMIT_UNTIL_KEY, until)
-      return mockAlbums()
-    }
-    return []
-  }
-  const data = (await res.json()) as { items?: Array<any> }
-  const result = (data.items ?? []).map(toAlbumItem)
-  cacheSet(cacheKey, result, CACHE_TTL_LONG)
-  return result
+  cacheSet(cacheKey, allItems, CACHE_TTL_LONG)
+  return allItems
 }
 
 export async function fetchAlbumTracks(
@@ -1285,14 +1344,10 @@ export async function searchTracksForArtist(
   const q = `artist:${safe}`
 
   // 候補を取りすぎると 429 になりやすいので控えめにする
-  const perQueryLimit = String(Math.min(25, limit * 3))
-
   for (const _ of [0]) {
     const params = new URLSearchParams({
       q,
       type: 'track',
-      // 候補を多めに取り、artistId に合うものがあれば優先
-      limit: perQueryLimit,
     })
 
     const res = await spotifyGet(`/search?${params.toString()}`, token)
@@ -1330,6 +1385,7 @@ export type FeedItem = {
   body: string
   coverUrl: string | null
   trackUrl: string
+  spotifyUri: string
   score: number
   fetchedAt: string
   overlapCount: number
@@ -1372,7 +1428,9 @@ export function buildFeedItems(
       coverUrl,
     }
   })
-  const related = ranked.filter((r) => r.overlapCount > 0)
+  const related = ranked
+    .filter((r) => r.overlapCount > 0)
+    .sort((a, b) => (b.track.popularity ?? 0) - (a.track.popularity ?? 0))
   return related.map(({ track, overlapCount, score, artistIds, sourcePickId, fetchedAt, albumName, coverUrl }, index) => {
     const album = track.album
     const computedFetchedAt = fetchedAt ?? toISODate(album?.release_date) ?? new Date().toISOString()
@@ -1387,6 +1445,7 @@ export function buildFeedItems(
       body: `${artistNames} / ${relation}`,
       coverUrl: coverUrl ?? album?.images?.[0]?.url ?? null,
       trackUrl: track.external_urls?.spotify ?? '',
+      spotifyUri: `spotify:track:${track.id}`,
       score,
       overlapCount,
       artistIds,
@@ -1420,11 +1479,7 @@ export async function searchTracksFromArtists(
     return matched.slice(0, limit).map(enrichMockTrack)
   }
 
-  const params = new URLSearchParams({
-    q,
-    type: 'track',
-    limit: String(Math.min(50, limit * 2)),
-  })
+  const params = new URLSearchParams({ q, type: 'track' })
   const res = await spotifyGet(`/search?${params.toString()}`, token)
   if (!res.ok) {
     const text = await res.text().catch(() => '')
@@ -1437,6 +1492,44 @@ export async function searchTracksFromArtists(
   const items = (data.tracks?.items ?? []) as SpotifyTrack[]
   const filtered = items.filter((t) => t.artists?.some((a) => artistIds.has(a.id)))
   return filtered.slice(0, limit)
+}
+
+/**
+ * @param offset ページング用（0 始まり）。`SPOTIFY_SEARCH_PAGE_SIZE` ずつ進める。
+ */
+export async function searchAllTracks(
+  token: string,
+  query: string,
+  offset = 0,
+): Promise<SpotifyTrack[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  const off = Math.max(0, Math.min(SPOTIFY_SEARCH_MAX_OFFSET, offset))
+  const page = SPOTIFY_SEARCH_PAGE_SIZE
+
+  if (isMockMode() || token === MOCK_ACCESS_TOKEN) {
+    const lower = q.toLowerCase()
+    const filtered = MOCK_TOP_TRACKS.filter((t) =>
+      t.name.toLowerCase().includes(lower) ||
+      t.artists.some((a) => a.name.toLowerCase().includes(lower)) ||
+      t.album?.name?.toLowerCase().includes(lower)
+    )
+    return filtered.slice(off, off + page).map(enrichMockTrack)
+  }
+
+  const params = new URLSearchParams({ q, type: 'track' })
+  if (off > 0) params.set('offset', String(off))
+  const res = await spotifyGet(`/search?${params.toString()}`, token)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    if (res.status === 401) {
+      throw new Error(`Spotify API error (search) ${res.status}: ${text}`)
+    }
+    return []
+  }
+  const data = (await res.json()) as { tracks?: { items?: SpotifyTrack[] } }
+  return (data.tracks?.items ?? []) as SpotifyTrack[]
 }
 
 export async function fetchMe(token: string): Promise<SpotifyMe> {

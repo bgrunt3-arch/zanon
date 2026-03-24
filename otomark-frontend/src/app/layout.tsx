@@ -28,6 +28,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja">
       <body>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var timers = new WeakMap();
+            document.addEventListener('scroll', function(e) {
+              var target = e.target;
+              if (!target || !target.classList) return;
+              target.classList.add('is-scrolling');
+              if (timers.has(target)) clearTimeout(timers.get(target));
+              timers.set(target, setTimeout(function() {
+                target.classList.remove('is-scrolling');
+              }, 800));
+            }, true);
+          })();
+        ` }} />
         {isMockMode && <div className="mockModeBadge">MOCK MODE</div>}
         <ErrorBoundary>
           <LayoutShell>{children}</LayoutShell>

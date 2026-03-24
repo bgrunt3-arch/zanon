@@ -14,6 +14,7 @@ import { paymentRouter }                        from './routes/payment.ts'
 import { favesRouter }                          from './routes/faves.ts'
 import { spotifyRouter }                        from './routes/spotify.ts'
 import { youtubeRouter }                        from './routes/youtube.ts'
+import { lastfmRouter }                         from './routes/lastfm.ts'
 
 const app = new Hono()
 
@@ -45,6 +46,7 @@ api.route('/payment',      paymentRouter)
 api.route('/faves',        favesRouter)
 api.route('/spotify',     spotifyRouter)
 api.route('/youtube',     youtubeRouter)
+api.route('/lastfm',      lastfmRouter)
 
 // ===== ヘルスチェック =====
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0' }))

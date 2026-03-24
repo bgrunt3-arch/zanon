@@ -252,7 +252,7 @@
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.artistCard:hover {
+.artistCardHovered {
   transform: scale(1.05);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
@@ -260,6 +260,7 @@
 .artistCardSelected {
   border-color: #1db954;
   box-shadow: 0 0 0 2px #1db954, 0 0 32px rgba(29, 185, 84, 0.4);
+  transform: scale(0.92);
 }
 
 .artistCardDisabled {

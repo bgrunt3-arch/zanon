@@ -148,6 +148,10 @@ authRouter.post('/spotify', async (c) => {
     )
   }
 
+  if (!user) {
+    return c.json({ error: 'ユーザー作成に失敗しました' }, 500)
+  }
+
   const token = signToken({ userId: user.id, username: user.username })
 
   return c.json({

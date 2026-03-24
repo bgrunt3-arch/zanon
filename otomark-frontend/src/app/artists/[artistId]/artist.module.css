@@ -215,6 +215,35 @@ a.seeAll:hover {
   transition: background 0.2s;
 }
 
+.trackPlayBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.trackRow:hover .trackPlayBtn {
+  opacity: 1;
+}
+
+.trackPlayBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.trackPlayBtn:disabled {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
 .trackRow:hover {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -299,7 +328,109 @@ a.seeAll:hover {
   color: #000;
 }
 
-/* 6. Discography Grid - 10枚が1行に収まるサイズ（スクショ準拠） */
+/* 6. Discography List */
+.discographyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discographyRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.discographyRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.discographyRowLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.discographyThumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.discographyThumbFallback {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: #2a2a2a;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b3b3b3;
+  flex-shrink: 0;
+}
+
+.discographyRowText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.discographyRowTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discographyRowMeta {
+  font-size: 12px;
+  color: #b3b3b3;
+}
+
+.discographyPlayBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: #1db954;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+}
+
+.discographyPlayBtn:hover:not(:disabled) {
+  background: rgba(29, 185, 84, 0.12);
+}
+
+.discographyPlayBtn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.discographyPlayBtn:disabled {
+  color: #535353;
+  cursor: not-allowed;
+}
+
+/* 旧 Grid（後方互換・削除予定） */
 .discographyGrid {
   display: grid;
   grid-auto-flow: column;
@@ -315,14 +446,53 @@ a.seeAll:hover {
 .albumCard {
   display: flex;
   flex-direction: column;
-  text-decoration: none;
   color: inherit;
-  transition: transform 0.2s;
   min-width: 0;
 }
 
 .albumCard:hover {
   transform: scale(1.04);
+}
+
+.albumCoverWrap {
+  position: relative;
+}
+
+.albumPlayBtn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  background: #1ed760;
+  border: none;
+  border-radius: 50%;
+  color: #000;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.albumCard:hover .albumPlayBtn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.albumPlayBtn:disabled {
+  background: rgba(29, 185, 84, 0.35);
+  cursor: not-allowed;
+}
+
+.albumCardLink {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
 }
 
 .albumCover {

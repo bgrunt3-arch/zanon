@@ -1,0 +1,314 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+/* ドラッグハンドル */
+.dragHandle {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+  cursor: grab;
+}
+
+.dragIndicator {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 閉じるボタン */
+.closeBtn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* アルバムカバー */
+.coverWrap {
+  width: min(72vw, 300px);
+  aspect-ratio: 1;
+  margin: 8px 0 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.7),
+    0 4px 16px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coverFallback {
+  width: 100%;
+  height: 100%;
+  background: #2a2a2a;
+}
+
+/* 歌詞エリア（コントロール下） */
+.lyricsArea {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  padding: 28px 32px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.lyricsLine {
+  font-size: clamp(14px, 4vw, 17px);
+  font-weight: 600;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0;
+  transition: color 0.3s ease, transform 0.3s ease;
+  text-align: center;
+}
+
+.lyricsLineActive {
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.lyricsPlain {
+  font-size: 13px;
+  line-height: 1.9;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: pre-line;
+  margin: 0;
+  text-align: center;
+}
+
+.lyricsStatus {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+/* 曲名・アーティスト名 */
+.trackInfo {
+  width: 100%;
+  padding: 20px 32px 0;
+  min-width: 0;
+}
+
+.trackName {
+  font-size: clamp(20px, 5vw, 26px);
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artistName {
+  font-size: clamp(14px, 3.5vw, 17px);
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* シークバー */
+.seekWrap {
+  width: 100%;
+  padding: 16px 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.seekBar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #fff var(--pct, 0%),
+    rgba(255, 255, 255, 0.25) var(--pct, 0%)
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.seekBar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease;
+}
+
+.seekBar:active::-webkit-slider-thumb {
+  transform: scale(1.3);
+}
+
+.seekBar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.seekTimes {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+}
+
+/* シャッフル・リピート行 */
+.modeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 48px 0;
+  flex-shrink: 0;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  position: relative;
+}
+
+.modeBtn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.modeBtnActive {
+  color: #1ed760;
+}
+
+.modeBtnActive::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #1ed760;
+}
+
+/* コントロール */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px 32px 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.iconBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.iconBtn:active {
+  transform: scale(0.9);
+}
+
+.playBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: #1ed760;
+  border: none;
+  border-radius: 50%;
+  color: #000;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(29, 215, 96, 0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.playBtn:hover {
+  background: #23e868;
+  transform: scale(1.04);
+}
+
+.playBtn:active {
+  transform: scale(0.94);
+}
+
+.playBtn:disabled {
+  background: rgba(29, 215, 96, 0.3);
+  color: rgba(0, 0, 0, 0.5);
+  cursor: not-allowed;
+  box-shadow: none;
+}

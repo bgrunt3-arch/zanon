@@ -9,11 +9,14 @@ import {
   fetchArtistTopTracks,
   fetchArtistRecentAlbums,
   fetchRelatedArtists,
+  fetchAlbumTracks,
   getAccessToken,
   clearAccessToken,
   type SpotifyArtist,
   type SpotifyTrack,
 } from '@/lib/orbit'
+import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
+import { useAlbumModalContext } from '@/contexts/AlbumModalContext'
 
 type AlbumItem = {
   id: string
@@ -40,6 +43,8 @@ export default function ArtistPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [discographyFilter, setDiscographyFilter] = useState<'all' | 'album' | 'single' | 'compilation'>('all')
+  const { deviceId, isReady, play } = useSpotifyPlayerContext()
+  const { openAlbumModal } = useAlbumModalContext()
 
   useEffect(() => {
     if (!artistId) {
@@ -220,7 +225,15 @@ export default function ArtistPage() {
                   <span className={styles.trackPopularity}>
                     {(track.popularity ?? 0).toLocaleString()}
                   </span>
-                  <span className={styles.trackDuration}>—</span>
+                  <button
+                    type="button"
+                    className={styles.trackPlayBtn}
+                    aria-label={`${track.name}を再生`}
+                    disabled={!isReady || !deviceId}
+                    onClick={() => play(`spotify:track:${track.id}`)}
+                  >
+                    ▶
+                  </button>
                 </li>
               ))}
             </ol>
@@ -265,29 +278,33 @@ export default function ArtistPage() {
               コンピレーション
             </button>
           </div>
-          <div className={styles.discographyGrid}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {filteredAlbums.map((album) => (
-              <a
-                key={album.id}
-                href={`https://open.spotify.com/album/${album.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className={styles.albumCard}
-              >
-                {album.coverUrl ? (
-                  <img src={album.coverUrl} alt="" className={styles.albumCover} />
-                ) : (
-                  <div className={styles.albumCoverFallback}>{album.name.slice(0, 2)}</div>
-                )}
-                <span className={styles.albumTitle}>{album.name}</span>
-                <span className={styles.albumMeta}>
-                  {album.releaseDate ? album.releaseDate.slice(0, 4) : ''}
-                  {album.releaseDate && ' • '}
-                  {ALBUM_TYPE_LABELS[album.albumType] ?? album.albumType}
-                </span>
-              </a>
+              <li key={album.id}>
+                <button
+                  type="button"
+                  onClick={() => { console.log('openAlbumModal called:', album.id); openAlbumModal(album.id) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '6px 0', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  {album.coverUrl ? (
+                    <img src={album.coverUrl} alt="" style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 48, height: 48, borderRadius: 4, background: '#2a2a2a', flexShrink: 0 }} />
+                  )}
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {album.name}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#b3b3b3' }}>
+                      {album.releaseDate ? album.releaseDate.slice(0, 4) : ''}
+                      {album.releaseDate && ' • '}
+                      {ALBUM_TYPE_LABELS[album.albumType] ?? album.albumType}
+                    </span>
+                  </div>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
 
         {/* 5. Related Artists (ファンの間で人気) */}

@@ -48,6 +48,35 @@
   padding: 0;
 }
 
+/* スクロールバー: デフォルト非表示、スクロール中のみ表示 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+*.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(80, 80, 80, 0.8);
+}
+
+*.is-scrolling {
+  scrollbar-color: rgba(80, 80, 80, 0.8) transparent;
+}
+
 html {
   /* ルートフォントを viewport に比例させ、rem ベースの要素が一括スケール */
   font-size: clamp(12px, 3.2vw, 18px);
@@ -89,7 +118,6 @@ button {
   height: 100vh;
   height: 100dvh;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: calc(clamp(72px, 20vw, 96px) + env(safe-area-inset-bottom, 0px));
 }
 
 /* ナビ非表示ページ（ログイン/コールバック/オンボーディング）は下部余白を最小化 */
@@ -100,7 +128,6 @@ button {
 .mainWithNav > main {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
 }
 
 .bottomNavWrapper {
@@ -108,13 +135,16 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 202;
   transition: transform 0.25s ease-out;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(0, 0, 0, 0.95);
 }
 
 .bottomNavWrapper.hidden {
   transform: translateY(100%);
 }
+
 
 .bottomNavWrapper.navPageHidden {
   display: none;

@@ -12,6 +12,7 @@ import {
   getSelectedArtists,
   isMockMode,
   saveSelectedArtists,
+  searchArtists,
   setForceMockFallback,
   type SpotifyArtist,
 } from '@/lib/orbit'
@@ -23,6 +24,10 @@ export default function OnboardingPage() {
   const [selectedArtists, setSelectedArtists] = useState<SpotifyArtist[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SpotifyArtist[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   useEffect(() => {
     const token = getAccessToken()
@@ -50,6 +55,22 @@ export default function OnboardingPage() {
       })
       .finally(() => setTopArtistsLoading(false))
   }, [retryKey])
+
+  useEffect(() => {
+    const token = getAccessToken()
+    if (!token || searchQuery.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearchLoading(true)
+    const timer = setTimeout(() => {
+      searchArtists(token, searchQuery)
+        .then((results) => setSearchResults(results))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false))
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const addArtist = (artist: SpotifyArtist) => {
     if (selectedArtists.some((a) => a.id === artist.id)) return
@@ -113,8 +134,38 @@ export default function OnboardingPage() {
     setShowMockExit(isMockMode())
   }, [retryKey])
 
+  /** レンダー中に localStorage を読まない（SSR/プリレンダーで落ちないよう selectedArtists に同期） */
+  const alreadyOnboarded = selectedArtists.length === 5
+
   return (
     <div className={styles.screen}>
+      {alreadyOnboarded && (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="閉じる"
+          style={{
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            right: 16,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(255,255,255,0.12)',
+            border: 'none',
+            borderRadius: '50%',
+            color: 'rgba(255,255,255,0.8)',
+            cursor: 'pointer',
+            zIndex: 50,
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          </svg>
+        </button>
+      )}
       <div className={styles.shell}>
         <div className={styles.scroll}>
           {/* ヒーロー */}
@@ -165,79 +216,135 @@ export default function OnboardingPage() {
           )}
           {error && <p className={styles.error}>{error}</p>}
 
-          {/* アーティスト一覧（TOP10のみ） */}
+          {/* 検索欄 */}
           <section>
-            <h2 className={styles.sectionTitle}>あなたのTOP10</h2>
+            <input
+              type="search"
+              className={styles.searchInput}
+              placeholder="アーティストを検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </section>
 
-            {topArtistsLoading ? (
-              <div className={styles.artistGrid}>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={`skeleton-${i}`} className={styles.skeletonCard} />
-                ))}
-              </div>
-            ) : (
-              <div className={styles.artistGrid}>
-                {topArtists.map((artist) => {
-                  const selected = isSelected(artist.id)
-                  const addable = canAdd(artist.id)
-                  return (
-                    <article
-                      key={artist.id}
-                      className={`${styles.artistCard} ${selected ? styles.artistCardSelected : ''} ${
-                        !addable && !selected ? styles.artistCardDisabled : ''
-                      }`}
-                      onClick={() => (selected ? removeArtist(artist.id) : addable && addArtist(artist))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          selected ? removeArtist(artist.id) : addable && addArtist(artist)
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {artist.images[0]?.url ? (
-                        <img
-                          src={artist.images[0].url}
-                          alt={artist.name}
-                          className={styles.artistCardImage}
-                        />
-                      ) : (
-                        <div className={styles.artistCardImageFallback}>
-                          {artist.name.slice(0, 2)}
-                        </div>
-                      )}
-                      {selected && <div className={styles.artistCardBadge}>✓</div>}
-                      <div className={styles.artistCardOverlay}>
-                        <p className={styles.artistCardName}>{artist.name}</p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            selected ? removeArtist(artist.id) : addArtist(artist)
+          {/* 検索結果 or TOP10 */}
+          <section>
+            {searchQuery.trim().length >= 2 ? (
+              <>
+                <h2 className={styles.sectionTitle}>検索結果</h2>
+                {searchLoading ? (
+                  <div className={styles.artistGrid}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={`skeleton-${i}`} className={styles.skeletonCard} />
+                    ))}
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <p className={styles.emptyMessage}>該当するアーティストが見つかりませんでした</p>
+                ) : (
+                  <div className={styles.artistGrid}>
+                    {searchResults.map((artist) => {
+                      const selected = isSelected(artist.id)
+                      const addable = canAdd(artist.id)
+                      const hovered = hoveredId === artist.id && !selected && addable
+                      return (
+                        <article
+                          key={artist.id}
+                          className={`${styles.artistCard} ${selected ? styles.artistCardSelected : ''} ${hovered ? styles.artistCardHovered : ''} ${!addable && !selected ? styles.artistCardDisabled : ''}`}
+                          onMouseEnter={() => setHoveredId(artist.id)}
+                          onMouseLeave={() => setHoveredId(null)}
+                          onClick={() => (selected ? removeArtist(artist.id) : addable && addArtist(artist))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              selected ? removeArtist(artist.id) : addable && addArtist(artist)
+                            }
                           }}
-                          className={`${styles.artistCardAction} ${
-                            selected
-                              ? styles.artistCardActionSelected
-                              : addable
-                                ? styles.artistCardActionAdd
-                                : styles.artistCardActionDisabled
-                          }`}
-                          disabled={!addable && !selected}
+                          role="button"
+                          tabIndex={0}
                         >
-                          {selected ? '解除' : addable ? '追加' : '5人まで'}
-                        </button>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
+                          {artist.images[0]?.url ? (
+                            <img src={artist.images[0].url} alt={artist.name} className={styles.artistCardImage} />
+                          ) : (
+                            <div className={styles.artistCardImageFallback}>{artist.name.slice(0, 2)}</div>
+                          )}
+                          {selected && <div className={styles.artistCardBadge}>✓</div>}
+                          <div className={styles.artistCardOverlay}>
+                            <p className={styles.artistCardName}>{artist.name}</p>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); selected ? removeArtist(artist.id) : addArtist(artist) }}
+                              className={`${styles.artistCardAction} ${selected ? styles.artistCardActionSelected : addable ? styles.artistCardActionAdd : styles.artistCardActionDisabled}`}
+                              disabled={!addable && !selected}
+                            >
+                              {selected ? '解除' : addable ? '追加' : '5人まで'}
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className={styles.sectionTitle}>あなたのTOP10</h2>
+                {topArtistsLoading ? (
+                  <div className={styles.artistGrid}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={`skeleton-${i}`} className={styles.skeletonCard} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.artistGrid}>
+                    {topArtists.map((artist) => {
+                      const selected = isSelected(artist.id)
+                      const addable = canAdd(artist.id)
+                      const hovered = hoveredId === artist.id && !selected && addable
+                      return (
+                        <article
+                          key={artist.id}
+                          className={`${styles.artistCard} ${selected ? styles.artistCardSelected : ''} ${hovered ? styles.artistCardHovered : ''} ${!addable && !selected ? styles.artistCardDisabled : ''}`}
+                          onMouseEnter={() => setHoveredId(artist.id)}
+                          onMouseLeave={() => setHoveredId(null)}
+                          onClick={() => (selected ? removeArtist(artist.id) : addable && addArtist(artist))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              selected ? removeArtist(artist.id) : addable && addArtist(artist)
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          {artist.images[0]?.url ? (
+                            <img src={artist.images[0].url} alt={artist.name} className={styles.artistCardImage} />
+                          ) : (
+                            <div className={styles.artistCardImageFallback}>{artist.name.slice(0, 2)}</div>
+                          )}
+                          {selected && <div className={styles.artistCardBadge}>✓</div>}
+                          <div className={styles.artistCardOverlay}>
+                            <p className={styles.artistCardName}>{artist.name}</p>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); selected ? removeArtist(artist.id) : addArtist(artist) }}
+                              className={`${styles.artistCardAction} ${selected ? styles.artistCardActionSelected : addable ? styles.artistCardActionAdd : styles.artistCardActionDisabled}`}
+                              disabled={!addable && !selected}
+                            >
+                              {selected ? '解除' : addable ? '追加' : '5人まで'}
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
 
-            {!topArtistsLoading && topArtists.length === 0 && (
-              <p className={styles.emptyMessage}>
-                よく聴くアーティストのデータがありません。Spotifyで音楽を聴いてから再度お試しください。
-              </p>
+                {!topArtistsLoading && topArtists.length === 0 && (
+                  <p className={styles.emptyMessage}>
+                    よく聴くアーティストのデータがありません。Spotifyで音楽を聴いてから再度お試しください。
+                  </p>
+                )}
+              </>
             )}
           </section>
         </div>

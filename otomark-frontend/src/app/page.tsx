@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -36,6 +36,18 @@ import {
   type FeedItem,
 } from '@/lib/orbit'
 import { fetchRecentSnsPosts, SNS_POSTS_LIMIT_PER_ARTIST, SNS_POSTS_LIMIT_TOTAL, type ArtistSnsPost } from '@/lib/sns'
+import { fetchArtistNews, type LastFmArtistInfo } from '@/lib/lastfm'
+import { lockScroll } from '@/lib/scrollLock'
+import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
+import { useAlbumModalContext } from '@/contexts/AlbumModalContext'
+
+type VideoMusic = {
+  title: string
+  artist: string
+  spotifyUrl: string | null
+  spotifyTrackId: string | null
+  coverUrl: string | null
+}
 
 type AlbumItem = {
   id: string
@@ -48,11 +60,12 @@ type AlbumItem = {
 const ALBUM_TYPE_LABELS: Record<string, string> = {
   album: 'アルバム',
   single: 'シングル',
+  ep: 'EP',
   compilation: 'コンピレーション',
 }
 
 /** falseにするとSpotifyフィードのデータ取得を完全停止 */
-const SPOTIFY_FEED_ENABLED = false
+const SPOTIFY_FEED_ENABLED = true
 
 const ACTIVE_ARTIST_KEY = 'orbit.feed.activeArtistId'
 const ALBUMS_RATE_LIMIT_UNTIL_KEY = 'orbit.spotify.albumsRateLimitedUntil'
@@ -189,15 +202,21 @@ function SortableArtistItem({
           <span className={s.filterIconFallback}>{artist.name.slice(0, 2)}</span>
         )}
       </button>
+      {isActive && (
+        <span className={s.filterIconName}>{artist.name}</span>
+      )}
     </div>
   )
 }
 
 export default function HomePage() {
   const router = useRouter()
+  const { deviceId, isReady, play, pause, isPlaying, currentTrack, setQueue } = useSpotifyPlayerContext()
+  const { openAlbumModal } = useAlbumModalContext()
   const [selectedArtists, setSelectedArtists] = useState<SpotifyArtist[]>([])
   const [feedItems, setFeedItems] = useState<FeedItem[]>([])
   const [viewerName, setViewerName] = useState<string>('you')
+  const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
   const [showReloginButton, setShowReloginButton] = useState<boolean>(true)
@@ -206,20 +225,86 @@ export default function HomePage() {
   const [retryTick, setRetryTick] = useState<number>(0)
   const [fallbackBanner, setFallbackBanner] = useState<boolean>(false)
   const [snsPosts, setSnsPosts] = useState<ArtistSnsPost[]>([])
+  const [snsLoading, setSnsLoading] = useState<boolean>(true)
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null)
+  const [videoMusicCache, setVideoMusicCache] = useState<Record<string, VideoMusic | null>>({})
+  const [videoMusicLoading, setVideoMusicLoading] = useState<Record<string, boolean>>({})
   const [trackFeedArtistId, setTrackFeedArtistId] = useState<string | null>(null)
   // Spotifyフィードは一時停止中
-  const [activeFeedTab] = useState<'news' | 'spotify'>('news')
-  const [discographyTab, setDiscographyTab] = useState<'album' | 'single'>('album')
+  const [activeFeedTab, setActiveFeedTab] = useState<'news' | 'spotify'>('spotify')
   const [popularTracksExpanded, setPopularTracksExpanded] = useState(false)
+  const [discographyExpanded, setDiscographyExpanded] = useState(false)
+  const [feedTabHidden, setFeedTabHidden] = useState(false)
+  const [lastfmCache, setLastfmCache] = useState<Record<string, LastFmArtistInfo | null>>({})
+  const [lastfmLoading, setLastfmLoading] = useState(false)
+  const lastScrollY = useRef(0)
+  const scrollTimer = useRef<ReturnType<typeof setTimeout>>()
+  const feedScrollRef = useRef<HTMLElement | null>(null)
+  const savedScrollPos = useRef<Record<'news' | 'spotify', number>>({ news: 0, spotify: 0 })
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget
+    const currentY = el.scrollTop
+    const delta = currentY - lastScrollY.current
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 150
+
+    if (atBottom || currentY < 50 || Math.abs(delta) < 15) {
+      lastScrollY.current = currentY
+      return
+    }
+
+    const hide = delta > 0
+    setFeedTabHidden(hide)
+    lastScrollY.current = currentY
+
+    clearTimeout(scrollTimer.current)
+    scrollTimer.current = setTimeout(() => {
+      setFeedTabHidden(false)
+    }, 800)
+  }, [])
+  const [visibleCount, setVisibleCount] = useState(10)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [topTracksByArtist, setTopTracksByArtist] = useState<Record<string, SpotifyTrack[]>>({})
   const [albumsByArtist, setAlbumsByArtist] = useState<Record<string, AlbumItem[]>>({})
   // Spotify API 上限: top-tracks 10曲/人 + アルバム50枚×50曲/枚
   const TARGET_TAGGED_COUNT = 500
 
+
   useEffect(() => {
     if (isForceMockFallback()) setFallbackBanner(true)
   }, [])
+
+  // feedItems が更新されたらプレイヤーのキューを同期（推しの曲のみ再生されるように）
+  useEffect(() => {
+    if (feedItems.length === 0) return
+    setQueue(feedItems.map((f) => f.spotifyUri))
+  // setQueue は useCallback([]) で安定しているため依存配列に含めない
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedItems])
+
+  useEffect(() => {
+    if (!expandedVideoId) return
+    if (expandedVideoId in videoMusicCache) return
+    if (videoMusicLoading[expandedVideoId]) return
+    const videoId = expandedVideoId
+    const base = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '')
+    const url = base
+      ? `${base}/api/v1/youtube/music?videoId=${videoId}`
+      : `/api/v1/youtube/music?videoId=${videoId}`
+    setVideoMusicLoading((prev) => ({ ...prev, [videoId]: true }))
+    fetch(url)
+      .then((r) => r.json())
+      .then((data: { track: VideoMusic | null }) => {
+        setVideoMusicCache((prev) => ({ ...prev, [videoId]: data.track ?? null }))
+      })
+      .catch(() => {
+        setVideoMusicCache((prev) => ({ ...prev, [videoId]: null }))
+      })
+      .finally(() => {
+        setVideoMusicLoading((prev) => ({ ...prev, [videoId]: false }))
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedVideoId])
 
   useEffect(() => {
     const saved = localStorage.getItem(ACTIVE_ARTIST_KEY)
@@ -332,6 +417,7 @@ export default function HomePage() {
         // タイムアウト後に結果が返ってきた場合も、可能なら通常表示へ復帰する
         setError('')
         setViewerName(me.display_name ?? 'you')
+        setViewerImageUrl(me.images?.[0]?.url ?? null)
 
         // 5人分の「人気曲(top-tracks)」と「最新リリース(直近アルバム→収録曲)」を順番に集める
         const tagged: Array<{
@@ -346,7 +432,6 @@ export default function HomePage() {
         const topTracksMap: Record<string, SpotifyTrack[]> = {}
         const albumsMap: Record<string, AlbumItem[]> = {}
 
-        const staggerMs = 1500
         for (let i = 0; i < picks.length; i++) {
           const artist = picks[i]
 
@@ -379,18 +464,14 @@ export default function HomePage() {
             }
             // それ以外のエラーはこの推しだけスキップして継続
           }
-
-          if (i < picks.length - 1) {
-            await new Promise((r) => setTimeout(r, staggerMs))
-          }
         }
 
         // 2) アルバム収録曲をラウンドロビンで全5人分取得（Spotify API 上限: 50枚×50曲）
-        const albumsRaw: Array<Array<{ id: string; name?: string; release_date?: string | null; album_type?: string; images?: Array<{ url: string }> | null }>> = []
-        for (let i = 0; i < picks.length; i++) {
+        const albumsRaw: Array<Array<{ id: string; name?: string; release_date?: string | null; album_type?: string; images?: Array<{ url: string }> | null }>> = Array.from({ length: picks.length }, () => [])
+        await Promise.all(picks.map(async (pick, i) => {
           try {
-            const albums = await fetchArtistRecentAlbums(token, picks[i].id, 15, me.country)
-            albumsRaw.push(albums)
+            const albums = await fetchArtistRecentAlbums(token, pick.id, 20, me.country)
+            albumsRaw[i] = albums
             const items: AlbumItem[] = albums.map((al) => ({
               id: al.id,
               name: al.name ?? '',
@@ -398,18 +479,16 @@ export default function HomePage() {
               coverUrl: al.images?.[0]?.url ?? null,
               albumType: al.album_type ?? 'album',
             }))
-            // 時系列順（新しい順）にソート
             items.sort((a, b) => {
               const da = a.releaseDate ?? ''
               const db = b.releaseDate ?? ''
               return db.localeCompare(da)
             })
-            albumsMap[picks[i].id] = items
+            albumsMap[pick.id] = items
           } catch {
-            albumsRaw.push([])
+            albumsRaw[i] = []
           }
-          if (i < picks.length - 1) await new Promise((r) => setTimeout(r, 800))
-        }
+        }))
         const maxAlbumsPerArtist = 5
         const maxAlbums = Math.min(Math.max(...albumsRaw.map((a) => a.length), 0), maxAlbumsPerArtist)
         for (let ai = 0; ai < maxAlbums; ai++) {
@@ -513,13 +592,30 @@ export default function HomePage() {
   }, [activeArtistId, selectedArtists])
 
   useEffect(() => {
-    if (selectedArtists.length === 0) return
+    if (selectedArtists.length === 0) {
+      setSnsLoading(false)
+      return
+    }
     let cancelled = false
+    const cacheKey = `orbit.snsPosts.${selectedArtists.map((a) => a.id).sort().join(',')}`
+    // キャッシュがあれば即表示
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        setSnsPosts(JSON.parse(cached))
+        setSnsLoading(false)
+      }
+    } catch { /* ignore */ }
+    // バックグラウンドで最新を取得して更新
     const load = async () => {
       const artistIds = selectedArtists.map((a) => a.id)
       const artistInfo = selectedArtists.map((a) => ({ id: a.id, name: a.name }))
       const posts = await fetchRecentSnsPosts(artistIds, SNS_POSTS_LIMIT_TOTAL, artistInfo)
-      if (!cancelled) setSnsPosts(posts)
+      if (!cancelled) {
+        setSnsPosts(posts)
+        setSnsLoading(false)
+        try { localStorage.setItem(cacheKey, JSON.stringify(posts)) } catch { /* ignore */ }
+      }
     }
     load()
     return () => {
@@ -527,10 +623,52 @@ export default function HomePage() {
     }
   }, [selectedArtists])
 
-  const visibleSnsPosts = useMemo(() => {
-    if (activeArtistId === 'all') return snsPosts.slice(0, SNS_POSTS_LIMIT_TOTAL)
-    return snsPosts.filter((p) => p.artistId === activeArtistId).slice(0, SNS_POSTS_LIMIT_PER_ARTIST)
+  // Last.fm アーティスト情報取得（アーティスト選択時・Spotifyタブ時）
+  useEffect(() => {
+    if (activeArtistId === 'all' || activeFeedTab !== 'spotify') return
+    const artist = selectedArtists.find((a) => a.id === activeArtistId)
+    if (!artist) return
+    if (activeArtistId in lastfmCache) return   // キャッシュ済み
+    let cancelled = false
+    setLastfmLoading(true)
+    fetchArtistNews(artist.name)
+      .then((info) => {
+        if (!cancelled) setLastfmCache((prev) => ({ ...prev, [activeArtistId]: info }))
+      })
+      .catch(() => {
+        if (!cancelled) setLastfmCache((prev) => ({ ...prev, [activeArtistId]: null }))
+      })
+      .finally(() => { if (!cancelled) setLastfmLoading(false) })
+    return () => { cancelled = true }
+  }, [activeArtistId, activeFeedTab, selectedArtists])
+
+  const filteredSnsPosts = useMemo(() => {
+    if (activeArtistId === 'all') return snsPosts
+    return snsPosts.filter((p) => p.artistId === activeArtistId)
   }, [snsPosts, activeArtistId])
+
+  const visibleSnsPosts = useMemo(() => {
+    return filteredSnsPosts.slice(0, visibleCount)
+  }, [filteredSnsPosts, visibleCount])
+
+  useEffect(() => {
+    setVisibleCount(10)
+  }, [activeArtistId])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 10)
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visibleSnsPosts.length])
 
   /** Spotifyタブで表示するアーティスト（フィルターで絞り込み） */
   const spotifyVisibleArtists = useMemo(() => {
@@ -569,15 +707,10 @@ export default function HomePage() {
     return items
   }, [spotifyVisibleArtists, albumsByArtist])
 
-  /** ディスコグラフィタブでフィルタしたアルバム一覧 */
-  const filteredDiscography = useMemo(() => {
-    if (discographyTab === 'album') return mergedDiscography.filter((a) => a.albumType === 'album')
-    if (discographyTab === 'single') return mergedDiscography.filter((a) => a.albumType === 'single')
-    return mergedDiscography
-  }, [mergedDiscography, discographyTab])
 
   /** 人気曲セクションを表示するか（Spotifyタブ内で人気曲あり） */
   const showPopularTracksSection = mergedTopTracks.length > 0
+
 
   const heroAccent = useMemo(() => getHeroGradientColor(selectedArtists), [selectedArtists])
   const activeArtistName = selectedArtists.find((a) => a.id === activeArtistId)?.name
@@ -612,10 +745,17 @@ export default function HomePage() {
             <h1 className={styles.homeTitle}>Orbit</h1>
           </div>
           <Link href="/mypage" className={styles.homeProfilePill} aria-label={`${viewerName}のマイページ`}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            {viewerImageUrl ? (
+              <img
+                src={viewerImageUrl}
+                alt={viewerName}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.515 17.308a.748.748 0 0 1-1.03.25c-2.819-1.723-6.365-2.112-10.542-1.157a.748.748 0 1 1-.333-1.459c4.571-1.045 8.492-.595 11.655 1.337a.748.748 0 0 1 .25 1.029zm1.472-3.276a.936.936 0 0 1-1.288.308c-3.226-1.983-8.143-2.557-11.958-1.399a.937.937 0 0 1-1.167-.623.936.936 0 0 1 .623-1.167c4.358-1.323 9.776-.681 13.482 1.594a.935.935 0 0 1 .308 1.287zm.126-3.41c-3.868-2.297-10.246-2.509-13.94-1.388a1.122 1.122 0 1 1-.651-2.149c4.239-1.285 11.284-1.037 15.739 1.607a1.122 1.122 0 1 1-1.148 1.93z"/>
+              </svg>
+            )}
           </Link>
         </nav>
 
@@ -623,25 +763,31 @@ export default function HomePage() {
           <div className={`${styles.filterRowWrapper} ${styles.homeFilterStrip}`}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <div className={styles.filterRow}>
-              <button
-                type="button"
-                className={`${styles.filterIconButton} ${activeArtistId === 'all' ? styles.filterIconButtonActive : ''}`}
-                onClick={() => {
-                  setActiveArtistId('all')
-                  setTrackFeedArtistId(null)
-                }}
-                aria-label="すべて"
-              >
-                <span className={styles.filterIconAll} aria-hidden>
-                  <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="12" r="2.8" />
-                    <circle cx="12" cy="5.5" r="2" />
-                    <circle cx="18.5" cy="12" r="2" />
-                    <circle cx="12" cy="18.5" r="2" />
-                    <circle cx="5.5" cy="12" r="2" />
-                  </svg>
-                </span>
-              </button>
+              <div className={styles.filterIconWrapper}>
+                <button
+                  type="button"
+                  className={`${styles.filterIconButton} ${activeArtistId === 'all' ? styles.filterIconButtonActive : ''}`}
+                  onClick={() => {
+                    feedScrollRef.current?.scrollTo({ top: 0 })
+                    setActiveArtistId('all')
+                    setTrackFeedArtistId(null)
+                  }}
+                  aria-label="すべて"
+                >
+                  <span className={styles.filterIconAll} aria-hidden>
+                    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="2.8" />
+                      <circle cx="12" cy="5.5" r="2" />
+                      <circle cx="18.5" cy="12" r="2" />
+                      <circle cx="12" cy="18.5" r="2" />
+                      <circle cx="5.5" cy="12" r="2" />
+                    </svg>
+                  </span>
+                </button>
+                {activeArtistId === 'all' && (
+                  <span className={styles.filterIconName}>ALL</span>
+                )}
+              </div>
               <SortableContext items={selectedArtists.map((a) => a.id)} strategy={horizontalListSortingStrategy}>
                 {selectedArtists.map((artist) => (
                   <SortableArtistItem
@@ -649,6 +795,7 @@ export default function HomePage() {
                     artist={artist}
                     isActive={activeArtistId === artist.id}
                     onSelect={() => {
+                      feedScrollRef.current?.scrollTo({ top: 0 })
                       setActiveArtistId(artist.id)
                       setTrackFeedArtistId(artist.id)
                     }}
@@ -661,7 +808,40 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Spotifyフィード一時停止中 — タブ非表示 */}
+        <div className={`${styles.feedTabOuter}${feedTabHidden ? ` ${styles.feedTabOuterHidden}` : ''}`}>
+          <div className={styles.feedTabRow}>
+            <button
+              type="button"
+              className={`${styles.feedTabButton} ${activeFeedTab === 'spotify' ? styles.feedTabButtonSpotify : ''}`}
+              onClick={() => {
+                savedScrollPos.current[activeFeedTab] = feedScrollRef.current?.scrollTop ?? 0
+                setActiveFeedTab('spotify')
+                requestAnimationFrame(() => {
+                  feedScrollRef.current?.scrollTo({ top: savedScrollPos.current.spotify })
+                })
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ display: 'block' }}>
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.515 17.308a.748.748 0 0 1-1.03.25c-2.819-1.723-6.365-2.112-10.542-1.157a.748.748 0 1 1-.333-1.459c4.571-1.045 8.492-.595 11.655 1.337a.748.748 0 0 1 .25 1.029zm1.472-3.276a.936.936 0 0 1-1.288.308c-3.226-1.983-8.143-2.557-11.958-1.399a.937.937 0 0 1-1.167-.623.936.936 0 0 1 .623-1.167c4.358-1.323 9.776-.681 13.482 1.594a.935.935 0 0 1 .308 1.287zm.126-3.41c-3.868-2.297-10.246-2.509-13.94-1.388a1.122 1.122 0 1 1-.651-2.149c4.239-1.285 11.284-1.037 15.739 1.607a1.122 1.122 0 1 1-1.148 1.93z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedTabButton} ${activeFeedTab === 'news' ? styles.feedTabButtonYoutube : ''}`}
+              onClick={() => {
+                savedScrollPos.current[activeFeedTab] = feedScrollRef.current?.scrollTop ?? 0
+                setActiveFeedTab('news')
+                requestAnimationFrame(() => {
+                  feedScrollRef.current?.scrollTo({ top: savedScrollPos.current.news })
+                })
+              }}
+            >
+              <svg width="20" height="14" viewBox="0 0 24 17" fill="currentColor" aria-hidden style={{ display: 'block' }}>
+                <path d="M23.495 2.656a3.016 3.016 0 0 0-2.122-2.134C19.505 0 12 0 12 0S4.495 0 2.627.522A3.016 3.016 0 0 0 .505 2.656 31.638 31.638 0 0 0 0 8.5a31.638 31.638 0 0 0 .505 5.844 3.016 3.016 0 0 0 2.122 2.134C4.495 17 12 17 12 17s7.505 0 9.373-.522a3.016 3.016 0 0 0 2.122-2.134A31.638 31.638 0 0 0 24 8.5a31.638 31.638 0 0 0-.505-5.844zM9.546 12.057V4.943L15.818 8.5l-6.272 3.557z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
         {error && (
           <div className={styles.homeErrorCard}>
@@ -698,26 +878,24 @@ export default function HomePage() {
 
         </header>
 
-        <section className={`${styles.feedSection} ${styles.homeFeedScroll}`} data-nav-scroll>
-            {loading ? (
-            <div className={styles.feed}>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={`skeleton-${i}`} className={`${styles.post} ${styles.skeletonPost}`}>
-                  <div className={styles.postHeader}>
-                    <div className={`${styles.snsAvatar} ${styles.skeletonBlock}`} style={{ borderRadius: '50%', flexShrink: 0 }} />
-                    <div className={styles.skeletonTextGroup}>
-                      <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: 120, height: 14, marginBottom: 6 }} />
-                      <div className={`${styles.skeletonBlock} ${styles.skeletonTime}`} />
-                    </div>
-                  </div>
-                  <div className={`${styles.skeletonBlock} ${styles.skeletonTitle}`} />
-                  <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: '90%' }} />
-                  <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: '70%' }} />
-                </div>
-              ))}
+        <section ref={feedScrollRef} className={`${styles.feedSection} ${styles.homeFeedScroll}`} data-nav-scroll onScroll={handleScroll} style={{ paddingBottom: 'calc(50px + env(safe-area-inset-bottom, 0px) + 4px + 68px)' }}>
+            {(activeFeedTab === 'news' && snsLoading) || (activeFeedTab === 'spotify' && loading) ? (
+            <div className={styles.emptyFeed} role="status" aria-live="polite" style={{ marginTop: 0, minHeight: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '15vh', borderRadius: 0, border: 'none', background: 'transparent', boxShadow: 'none' }}>
+              <div className={`${styles.emptyFeedOrb} ${styles.emptyFeedOrbLoading}`} aria-hidden>
+                <span className={styles.emptyFeedRing} />
+                <span className={styles.emptyFeedRing} />
+                <span className={styles.emptyFeedDot} />
+              </div>
+              <h2 className={styles.emptyFeedTitle}>読み込み中...</h2>
+              <p className={styles.emptyFeedText}>
+                {activeFeedTab === 'news'
+                  ? '最新の動画を取得しています。しばらくお待ちください。'
+                  : 'Spotify からデータを取得しています。しばらくお待ちください。'}
+              </p>
             </div>
             ) : activeFeedTab === 'news' ? (
-            visibleSnsPosts.length > 0 ? (
+            <>
+            {visibleSnsPosts.length > 0 ? (
             <div className={styles.feed}>
               {visibleSnsPosts.map((post, i) => {
                 const isYoutube = post.platform === 'youtube' && post.videoId
@@ -736,15 +914,56 @@ export default function HomePage() {
                       </div>
                       <p className={styles.snsContent}>{post.content}</p>
                       {isExpanded ? (
-                        <div className={styles.youtubeEmbed}>
-                          <iframe
-                            src={`https://www.youtube.com/embed/${post.videoId}?autoplay=1`}
-                            title={post.content}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className={styles.youtubeIframe}
-                          />
-                        </div>
+                        <>
+                          <div className={styles.youtubeEmbed}>
+                            <button
+                              type="button"
+                              className={styles.youtubeCloseBtn}
+                              onClick={() => setExpandedVideoId(null)}
+                              aria-label="動画を閉じる"
+                            >✕</button>
+                            <iframe
+                              src={`https://www.youtube.com/embed/${post.videoId}?autoplay=1`}
+                              title={post.content}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className={styles.youtubeIframe}
+                            />
+                          </div>
+                          {videoMusicLoading[post.videoId!] && (
+                            <div className={styles.youtubeMusicCard}>
+                              <span className={styles.youtubeMusicLoading}>楽曲を認識中...</span>
+                            </div>
+                          )}
+                          {!videoMusicLoading[post.videoId!] && videoMusicCache[post.videoId!] && (() => {
+                            const music = videoMusicCache[post.videoId!]!
+                            return (
+                              <div className={styles.youtubeMusicCard}>
+                                {music.coverUrl && (
+                                  <img src={music.coverUrl} alt="" className={styles.youtubeMusicCover} />
+                                )}
+                                <div className={styles.youtubeMusicInfo}>
+                                  <span className={styles.youtubeMusicTitle}>{music.title}</span>
+                                  <span className={styles.youtubeMusicArtist}>{music.artist}</span>
+                                </div>
+                                {music.spotifyUrl && (
+                                  <a
+                                    href={music.spotifyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={styles.youtubeMusicSpotifyBtn}
+                                    aria-label="Spotifyで聴く"
+                                  >
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                                    </svg>
+                                    Spotifyで聴く
+                                  </a>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </>
                       ) : (
                         <button
                           type="button"
@@ -802,147 +1021,173 @@ export default function HomePage() {
                   </div>
                 )
               })}
+              {visibleCount < filteredSnsPosts.length && (
+                <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
+              )}
             </div>
           ) : (
             <div className={styles.emptyFeed} role="status">
-              <div className={styles.emptyFeedOrb} aria-hidden>
+              <div className={`${styles.emptyFeedOrb} ${snsLoading ? styles.emptyFeedOrbLoading : ''}`} aria-hidden>
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedDot} />
               </div>
               <h2 className={styles.emptyFeedTitle}>
-                {activeArtistId === 'all'
+                {snsLoading
+                  ? '投稿を読み込み中...'
+                  : activeArtistId === 'all'
                   ? 'タイムラインはまだ静かです'
                   : `${activeArtistName ?? 'このアーティスト'}の投稿はまだありません`}
               </h2>
               <p className={styles.emptyFeedText}>
-                {activeArtistId === 'all'
+                {snsLoading
+                  ? '最新のSNS投稿を取得しています。しばらくお待ちください。'
+                  : activeArtistId === 'all'
                   ? 'SNSの更新は準備中です。Spotify タブではリリースや人気曲を今すぐチェックできます。'
                   : 'フィルターを「すべて」にすると、ほかの推しの投稿もまとめて見られます。'}
               </p>
-              <div className={styles.emptyFeedActions}>
-                {/* Spotifyフィード一時停止中 */}
-                {activeArtistId !== 'all' && (
-                  <button
-                    type="button"
-                    className={styles.emptyFeedGhost}
-                    onClick={() => {
-                      setActiveArtistId('all')
-                      setTrackFeedArtistId(null)
-                    }}
-                  >
-                    すべての推しを表示
-                  </button>
-                )}
-                <Link href="/search" className={styles.emptyFeedLink}>
-                  検索でアーティストを探す
-                </Link>
-              </div>
+              {!snsLoading && (
+                <div className={styles.emptyFeedActions}>
+                  {activeArtistId !== 'all' && (
+                    <button
+                      type="button"
+                      className={styles.emptyFeedGhost}
+                      onClick={() => {
+                        setActiveArtistId('all')
+                        setTrackFeedArtistId(null)
+                      }}
+                    >
+                      すべての推しを表示
+                    </button>
+                  )}
+                  <Link href="/search" className={styles.emptyFeedLink}>
+                    検索でアーティストを探す
+                  </Link>
+                </div>
+              )}
             </div>
           )
+            }
+            </>
             ) : activeFeedTab === 'spotify' ? (
             mergedTopTracks.length > 0 || mergedDiscography.length > 0 ? (
             <div className={styles.spotifyFeed}>
-              {/* 人気曲セクション（ディスコグラフィの上） */}
-              {showPopularTracksSection && (
-                <section className={artistStyles.section}>
-                  <div className={artistStyles.sectionHeader}>
-                    <h2 className={artistStyles.sectionTitle}>人気曲</h2>
-                  </div>
-                  <ol className={artistStyles.trackList}>
-                    {mergedTopTracks
-                      .slice(0, popularTracksExpanded ? 10 : 5)
-                      .map((track, i) => (
-                        <li key={track.id}>
-                          <a
-                            href={track.external_urls?.spotify ?? '#'}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className={`${artistStyles.trackRow} ${styles.spotifyTrackLink}`}
-                          >
-                            <span className={artistStyles.trackRank}>{i + 1}</span>
-                            {track.album?.images?.[0]?.url ? (
-                              <img src={track.album.images[0].url} alt="" className={artistStyles.trackThumb} />
-                            ) : (
-                              <div className={artistStyles.trackThumbFallback} />
-                            )}
-                            <div className={artistStyles.trackInfo}>
-                              <span className={artistStyles.trackName}>{track.name}</span>
+              {/* Last.fm アーティストカード（アーティスト選択時のみ） */}
+              {activeArtistId !== 'all' && (() => {
+                const info = lastfmCache[activeArtistId]
+                if (!info && !lastfmLoading) return null
+                const spotifyArtist = selectedArtists.find((a) => a.id === activeArtistId)
+                const listeners = info ? Number(info.stats.listeners).toLocaleString('ja-JP') : null
+                const playcount = info ? Number(info.stats.playcount).toLocaleString('ja-JP') : null
+                const rawBio = info?.bio?.summary ?? ''
+                const bio = rawBio
+                  .replace(/<a[^>]*>.*?<\/a>/gi, '')
+                  .replace(/<[^>]+>/g, '')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                const tags = info?.tags?.tag?.slice(0, 4) ?? []
+                // Spotify の画像を優先、なければ Last.fm にフォールバック
+                const img =
+                  spotifyArtist?.images?.[0]?.url ??
+                  info?.image?.find((i) => i.size === 'extralarge' || i.size === 'large')?.['#text'] ??
+                  null
+                const displayName = info?.name ?? spotifyArtist?.name ?? ''
+                return (
+                  <div className={styles.lastfmCard}>
+                    {lastfmLoading && !info ? (
+                      <div className={styles.lastfmCardSkeleton}>
+                        <div className={styles.skeletonBlock} style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0 }} />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: '60%', height: 14 }} />
+                          <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: '40%', height: 11 }} />
+                          <div className={`${styles.skeletonBlock} ${styles.skeletonLine}`} style={{ width: '90%', height: 11 }} />
+                        </div>
+                      </div>
+                    ) : info ? (
+                      <>
+                        <div className={styles.lastfmCardHeader}>
+                          {img ? (
+                            <img src={img} alt={displayName} className={styles.lastfmCardImg} />
+                          ) : (
+                            <div className={styles.lastfmCardImgFallback}>{displayName.slice(0, 2)}</div>
+                          )}
+                          <div className={styles.lastfmCardMeta}>
+                            <p className={styles.lastfmCardName}>{displayName}</p>
+                            <div className={styles.lastfmCardStats}>
+                              {listeners && (
+                                <span className={styles.lastfmCardStat}>
+                                  <span className={styles.lastfmCardStatLabel}>リスナー</span>
+                                  <span className={styles.lastfmCardStatValue}>{listeners}</span>
+                                </span>
+                              )}
+                              {playcount && (
+                                <span className={styles.lastfmCardStat}>
+                                  <span className={styles.lastfmCardStatLabel}>再生数</span>
+                                  <span className={styles.lastfmCardStatValue}>{playcount}</span>
+                                </span>
+                              )}
                             </div>
-                            <span className={artistStyles.trackPopularity}>
-                              {(track.popularity ?? 0).toLocaleString()}
-                            </span>
-                            <span className={artistStyles.trackDuration}>—</span>
-                          </a>
-                        </li>
-                      ))}
-                  </ol>
-                  {mergedTopTracks.length > 5 && !popularTracksExpanded && (
-                    <button
-                      type="button"
-                      className={styles.discographyShowMore}
-                      onClick={() => setPopularTracksExpanded(true)}
-                    >
-                      もっと見る
-                    </button>
-                  )}
-                  {popularTracksExpanded && (
-                    <button
-                      type="button"
-                      className={styles.discographyShowMore}
-                      onClick={() => setPopularTracksExpanded(false)}
-                    >
-                      表示を少なくする
-                    </button>
-                  )}
-                </section>
-              )}
+                          </div>
+                        </div>
+                        {tags.length > 0 && (
+                          <div className={styles.lastfmCardTags}>
+                            {tags.map((tag) => (
+                              <span key={tag.name} className={styles.lastfmCardTag}>{tag.name}</span>
+                            ))}
+                          </div>
+                        )}
+                        {bio && (
+                          <p className={styles.lastfmCardBio}>{bio.length > 200 ? bio.slice(0, 200) + '…' : bio}</p>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )
+              })()}
 
               {/* ディスコグラフィセクション */}
               <section className={artistStyles.section}>
                 <div className={artistStyles.sectionHeader}>
                   <h2 className={artistStyles.sectionTitle}>ディスコグラフィ</h2>
                 </div>
-                <div className={artistStyles.filterChips}>
-                  <button
-                    type="button"
-                    className={`${artistStyles.filterChip} ${discographyTab === 'album' ? artistStyles.filterChipActive : ''}`}
-                    onClick={() => setDiscographyTab('album')}
-                  >
-                    アルバム
-                  </button>
-                  <button
-                    type="button"
-                    className={`${artistStyles.filterChip} ${discographyTab === 'single' ? artistStyles.filterChipActive : ''}`}
-                    onClick={() => setDiscographyTab('single')}
-                  >
-                    シングルとEP
-                  </button>
-                </div>
-                <div className={artistStyles.discographyGrid}>
-                  {filteredDiscography.map((album) => (
-                    <a
+                <div className={styles.discographyList}>
+                  {(discographyExpanded ? mergedDiscography : mergedDiscography.slice(0, 5)).map((album) => (
+                    <div
                       key={album.id}
-                      href={`https://open.spotify.com/album/${album.id}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className={artistStyles.albumCard}
+                      className={styles.discographyListItem}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => openAlbumModal(album.id)}
                     >
                       {album.coverUrl ? (
-                        <img src={album.coverUrl} alt="" className={artistStyles.albumCover} />
+                        <img src={album.coverUrl} alt="" className={styles.discographyListCover} />
                       ) : (
-                        <div className={artistStyles.albumCoverFallback}>{album.name.slice(0, 2)}</div>
+                        <div className={styles.discographyListCoverFallback}>{album.name.slice(0, 2)}</div>
                       )}
-                      <span className={artistStyles.albumTitle}>{album.name}</span>
-                      <span className={artistStyles.albumMeta}>
-                        {[album.releaseDate?.slice(0, 4), album.artistName, ALBUM_TYPE_LABELS[album.albumType] ?? album.albumType]
-                          .filter(Boolean)
-                          .join(' • ')}
-                      </span>
-                    </a>
+                      <div className={styles.discographyListInfo}>
+                        <div className={styles.discographyListTitle}>{album.name}</div>
+                        <div className={styles.discographyListMeta}>
+                          {[ALBUM_TYPE_LABELS[album.albumType] ?? album.albumType, album.releaseDate?.slice(0, 4)]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
+                {mergedDiscography.length > 5 && (
+                  <button
+                    type="button"
+                    className={styles.discographySeeAll}
+                    onClick={() => {
+                      if (discographyExpanded) lockScroll()
+                      setDiscographyExpanded((v) => !v)
+                    }}
+                  >
+                    {discographyExpanded ? '表示を少なくする' : 'すべて見る'}
+                  </button>
+                )}
               </section>
+
             </div>
           ) : (
             <div className={styles.emptyFeed} role="status">
@@ -981,6 +1226,8 @@ export default function HomePage() {
             </div>
           )
             ) : null}
+        {/* ナビバー分のスペーサー（Safari の overflow padding-bottom バグ回避） */}
+        <div style={{ height: 'calc(50px + env(safe-area-inset-bottom, 0px) + 4px + 68px)', flexShrink: 0 }} aria-hidden />
         </section>
       </div>
     </div>

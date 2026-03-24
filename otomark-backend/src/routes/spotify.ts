@@ -46,6 +46,8 @@ spotifyRouter.get('/proxy', async (c) => {
 
   const normalized = targetPath.startsWith('/') ? targetPath : `/${targetPath}`
   const url = `${SPOTIFY_API_BASE}${normalized}`
+  console.log('[Spotify proxy] raw targetPath:', targetPath)
+  console.log('[Spotify proxy] Spotify URL:', url)
 
   // サーバーキャッシュチェック（ユーザー固有データ以外はキャッシュ可）
   const isMeEndpoint = normalized.startsWith('/me')

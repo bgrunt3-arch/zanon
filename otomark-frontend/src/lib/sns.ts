@@ -114,10 +114,10 @@ function relativeTime(iso: string): string {
   }
 }
 
-/** バックエンド経由でYouTube最新動画を取得 */
-async function fetchYoutubeVideos(channelUrl: string, maxResults = 3): Promise<YoutubeVideo[]> {
+/** バックエンド経由でYouTube最新動画を RSS フィード経由で取得（API クォータ不使用） */
+async function fetchYoutubeVideos(channelUrl: string, maxResults = 15): Promise<YoutubeVideo[]> {
   const base = getApiBase()
-  const url = `${base}/api/v1/youtube/videos?channelUrl=${encodeURIComponent(channelUrl)}&maxResults=${maxResults}`
+  const url = `${base}/api/v1/youtube/rss?channelUrl=${encodeURIComponent(channelUrl)}&maxResults=${maxResults}`
   try {
     const res = await fetch(url)
     if (!res.ok) return []
@@ -225,9 +225,8 @@ export async function fetchRecentSnsPosts(
       const artistName = infoMap.get(artistId) ?? 'Artist'
       const results: ArtistSnsPost[] = []
 
-      // YouTube: 実際の動画を取得
       if (urls.youtube) {
-        const videos = await fetchYoutubeVideos(urls.youtube, 3)
+        const videos = await fetchYoutubeVideos(urls.youtube, 50)
         for (const v of videos) {
           results.push({
             artistId,
