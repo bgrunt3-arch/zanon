@@ -1555,6 +1555,19 @@ export async function fetchMe(token: string): Promise<SpotifyMe> {
   return data
 }
 
+export async function fetchTrackPreview(trackId: string): Promise<string | null> {
+  const token = getAccessToken()
+  if (!token) return null
+  try {
+    const res = await spotifyGet(`/tracks/${trackId}`, token)
+    if (!res.ok) return null
+    const data = (await res.json()) as { preview_url?: string | null }
+    return data?.preview_url ?? null
+  } catch {
+    return null
+  }
+}
+
 function generateCodeVerifier(): string {
   const bytes = new Uint8Array(64)
   crypto.getRandomValues(bytes)
