@@ -219,6 +219,7 @@ export default function HomePage() {
   const [fallbackBanner, setFallbackBanner] = useState<boolean>(false)
   const [snsPosts, setSnsPosts] = useState<ArtistSnsPost[]>([])
   const [snsLoading, setSnsLoading] = useState<boolean>(true)
+  const [snsRefreshTick, setSnsRefreshTick] = useState(0)
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null)
   const [trackFeedArtistId, setTrackFeedArtistId] = useState<string | null>(null)
   // Spotifyフィードは一時停止中
@@ -558,6 +559,17 @@ export default function HomePage() {
     }
   }, [activeArtistId, selectedArtists])
 
+  // activeArtistId が 'all' に切り替わったとき: キャッシュをクリアして全件再取得をトリガー
+  useEffect(() => {
+    if (activeArtistId !== 'all' || selectedArtists.length === 0) return
+    const cacheKey = `orbit.snsPosts.${selectedArtists.map((a) => a.id).sort().join(',')}`
+    try { localStorage.removeItem(cacheKey) } catch { /* ignore */ }
+    setSnsPosts([])
+    setSnsRefreshTick((t) => t + 1)
+  // selectedArtists は cacheKey 計算に必要だが変化でトリガーしない（activeArtistId 変化のみ反応）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeArtistId])
+
   useEffect(() => {
     if (selectedArtists.length === 0) {
       setSnsLoading(false)
@@ -565,15 +577,18 @@ export default function HomePage() {
     }
     let cancelled = false
     const cacheKey = `orbit.snsPosts.${selectedArtists.map((a) => a.id).sort().join(',')}`
-    // キャッシュがあれば即表示
-    try {
-      const cached = localStorage.getItem(cacheKey)
-      if (cached) {
-        setSnsPosts(JSON.parse(cached))
-        setSnsLoading(false)
-      }
-    } catch { /* ignore */ }
+    // キャッシュがあれば即表示（snsRefreshTick > 0 はキャッシュクリア済みなのでスキップ）
+    if (snsRefreshTick === 0) {
+      try {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          setSnsPosts(JSON.parse(cached))
+          setSnsLoading(false)
+        }
+      } catch { /* ignore */ }
+    }
     // バックグラウンドで最新を取得して更新
+    setSnsLoading(true)
     const load = async () => {
       const artistIds = selectedArtists.map((a) => a.id)
       const artistInfo = selectedArtists.map((a) => ({ id: a.id, name: a.name }))
@@ -588,7 +603,7 @@ export default function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [selectedArtists])
+  }, [selectedArtists, snsRefreshTick])
 
   // Last.fm アーティスト情報取得（アーティスト選択時・Spotifyタブ時）
   useEffect(() => {
