@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAccessToken, fetchMe } from '@/lib/orbit'
+import { getAccessToken, fetchMe, fetchTrackPreview } from '@/lib/orbit'
 
 declare global {
   interface Window {
@@ -49,6 +49,8 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
   const deviceIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
+  const isPremiumRef = useRef(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<CurrentTrack | null>(null)
   const [position, setPosition] = useState(0)
@@ -67,7 +69,11 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
     const token = getAccessToken()
     if (!token) return
     fetchMe(token)
-      .then((me) => setIsPremium(me.product === 'premium'))
+      .then((me) => {
+        const premium = me.product === 'premium'
+        setIsPremium(premium)
+        isPremiumRef.current = premium
+      })
       .catch(() => {/* ignore */})
   }, [])
 
@@ -202,8 +208,55 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
     setIsPlaying(true)
   }
 
+  const playPreview = async (spotifyUri: string): Promise<void> => {
+    const trackId = spotifyUri.startsWith('spotify:track:')
+      ? spotifyUri.slice('spotify:track:'.length)
+      : spotifyUri
+
+    const info = await fetchTrackPreview(trackId)
+    if (!info) return
+
+    // 前の再生を停止
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+
+    // MiniPlayer に反映
+    setCurrentTrack({
+      name: info.name,
+      artistName: info.artistName,
+      coverUrl: info.coverUrl,
+      uri: spotifyUri.startsWith('spotify:track:') ? spotifyUri : `spotify:track:${spotifyUri}`,
+    })
+
+    if (!info.previewUrl) return
+
+    const audio = new Audio(info.previewUrl)
+    audioRef.current = audio
+    audio.play().catch(() => {})
+    setIsPlaying(true)
+
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false)
+    })
+  }
+
   const play = async (spotifyUri: string): Promise<void> => {
-    // URI 未指定 = 一時停止からの再開
+    if (!isPremiumRef.current) {
+      if (!spotifyUri) {
+        // 非Premium: 一時停止からの再開
+        if (audioRef.current) {
+          audioRef.current.play().catch(() => {})
+          setIsPlaying(true)
+        }
+        return
+      }
+      await playPreview(spotifyUri)
+      return
+    }
+
+    // Premium: Spotify Web Playback SDK
     if (!spotifyUri) {
       await playerRef.current?.resume()
       setIsPlaying(true)
@@ -213,6 +266,11 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
   }
 
   const pause = async (): Promise<void> => {
+    if (!isPremiumRef.current) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+      return
+    }
     await playerRef.current?.pause()
     setIsPlaying(false)
   }

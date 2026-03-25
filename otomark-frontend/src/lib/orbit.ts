@@ -1555,14 +1555,31 @@ export async function fetchMe(token: string): Promise<SpotifyMe> {
   return data
 }
 
-export async function fetchTrackPreview(trackId: string): Promise<string | null> {
+export type TrackPreviewInfo = {
+  previewUrl: string | null
+  name: string
+  artistName: string
+  coverUrl: string | null
+}
+
+export async function fetchTrackPreview(trackId: string): Promise<TrackPreviewInfo | null> {
   const token = getAccessToken()
   if (!token) return null
   try {
     const res = await spotifyGet(`/tracks/${trackId}`, token)
     if (!res.ok) return null
-    const data = (await res.json()) as { preview_url?: string | null }
-    return data?.preview_url ?? null
+    const data = (await res.json()) as {
+      preview_url?: string | null
+      name?: string
+      artists?: Array<{ name: string }>
+      album?: { images?: Array<{ url: string }> }
+    }
+    return {
+      previewUrl: data?.preview_url ?? null,
+      name: data?.name ?? '',
+      artistName: data?.artists?.map((a) => a.name).join(', ') ?? '',
+      coverUrl: data?.album?.images?.[0]?.url ?? null,
+    }
   } catch {
     return null
   }
