@@ -228,6 +228,7 @@ export function FullPlayer({ onClose }: Props) {
             aria-label="カバーに戻る"
             onKeyDown={(e) => e.key === 'Enter' && setShowLyrics(false)}
           >
+            <p className={styles.lyricsHint}>タップでカバーに戻る</p>
             {lyrics.loading && (
               <p className={styles.lyricsStatus}>読み込み中...</p>
             )}
@@ -253,26 +254,34 @@ export function FullPlayer({ onClose }: Props) {
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            className={styles.coverWrap}
-            onClick={() => setShowLyrics(true)}
-            aria-label="歌詞を表示"
-          >
-            {currentTrack.coverUrl ? (
-              <Image
-                src={currentTrack.coverUrl}
-                alt={currentTrack.name}
-                width={400}
-                height={400}
-                className={styles.cover}
-                unoptimized
-                priority
-              />
-            ) : (
-              <div className={styles.coverFallback} />
-            )}
-          </button>
+          <>
+            <button
+              type="button"
+              className={styles.coverWrap}
+              onClick={() => setShowLyrics(true)}
+              aria-label="歌詞を表示"
+            >
+              {currentTrack.coverUrl ? (
+                <Image
+                  src={currentTrack.coverUrl}
+                  alt={currentTrack.name}
+                  width={400}
+                  height={400}
+                  className={styles.cover}
+                  unoptimized
+                  priority
+                />
+              ) : (
+                <div className={styles.coverFallback} />
+              )}
+            </button>
+            <span className={styles.coverHint} aria-hidden>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3a4 4 0 0 1 4 4v5a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zm6 9a1 1 0 0 1 2 0 8 8 0 0 1-7 7.94V22h-2v-2.06A8 8 0 0 1 4 12a1 1 0 0 1 2 0 6 6 0 0 0 12 0z"/>
+              </svg>
+              歌詞
+            </span>
+          </>
         )}
       </div>
 
