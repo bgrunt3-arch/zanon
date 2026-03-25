@@ -10,7 +10,6 @@ function CreateContent() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -131,42 +130,6 @@ function CreateContent() {
                 lineHeight: 1.6,
               }}
             />
-          </div>
-
-          {/* 公開/非公開トグル */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className={styles.meta} style={{ marginBottom: 0 }}>公開</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isPublic}
-              onClick={() => setIsPublic((v) => !v)}
-              style={{
-                width: 52,
-                height: 30,
-                borderRadius: 15,
-                border: 'none',
-                background: isPublic ? '#1db954' : '#3a3a3a',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'background 0.2s',
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 3,
-                  left: isPublic ? 25 : 3,
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  background: '#fff',
-                  transition: 'left 0.2s',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                }}
-              />
-            </button>
           </div>
 
           {/* 送信ボタン */}

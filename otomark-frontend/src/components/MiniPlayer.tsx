@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import styles from './MiniPlayer.module.css'
 import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
 import { FullPlayer } from './FullPlayer'
@@ -41,6 +42,11 @@ function SkipForwardIcon() {
 export function MiniPlayer() {
   const { isReady, isPlaying, currentTrack, position, duration, pause, play, skipNext, skipPrev } = useSpotifyPlayerContext()
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    setFullPlayerOpen(false)
+  }, [pathname])
 
   if (!currentTrack) return null
 

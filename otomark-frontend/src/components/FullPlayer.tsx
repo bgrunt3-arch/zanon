@@ -85,6 +85,7 @@ export function FullPlayer({ onClose }: Props) {
   const [showAddSheet, setShowAddSheet] = useState(false)
   const [localPlaylists, setLocalPlaylists] = useState<LocalPlaylist[]>([])
   const [showToast, setShowToast] = useState(false)
+  const [showLyrics, setShowLyrics] = useState(false)
 
   const handleOpenAddSheet = useCallback(() => {
     setLocalPlaylists(getLocalPlaylists())
@@ -132,11 +133,16 @@ export function FullPlayer({ onClose }: Props) {
     return () => clearInterval(id)
   }, [isPlaying, isSeeking, duration])
 
+  // トラックが変わったら歌詞表示をリセット
+  useEffect(() => {
+    setShowLyrics(false)
+  }, [currentTrack?.uri])
+
   // 歌詞の現在行を中央にスクロール
   useEffect(() => {
-    if (!activeLineRef.current || !lyricsRef.current) return
+    if (!showLyrics || !activeLineRef.current || !lyricsRef.current) return
     activeLineRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [currentLineIndex])
+  }, [currentLineIndex, showLyrics])
 
   // スワイプダウンで閉じる
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -210,20 +216,63 @@ export function FullPlayer({ onClose }: Props) {
         <CloseIcon />
       </button>
 
-      {/* アルバムカバー */}
-      <div className={styles.coverWrap}>
-        {currentTrack.coverUrl ? (
-          <Image
-            src={currentTrack.coverUrl}
-            alt={currentTrack.name}
-            width={400}
-            height={400}
-            className={styles.cover}
-            unoptimized
-            priority
-          />
+      {/* メインエリア（カバー ↔ 歌詞） */}
+      <div className={styles.mainArea}>
+        {showLyrics ? (
+          <div
+            ref={lyricsRef}
+            className={styles.lyricsArea}
+            onClick={() => setShowLyrics(false)}
+            role="button"
+            tabIndex={0}
+            aria-label="カバーに戻る"
+            onKeyDown={(e) => e.key === 'Enter' && setShowLyrics(false)}
+          >
+            {lyrics.loading && (
+              <p className={styles.lyricsStatus}>読み込み中...</p>
+            )}
+            {!lyrics.loading && lyrics.instrumental && (
+              <p className={styles.lyricsStatus}>インストゥルメンタル</p>
+            )}
+            {!lyrics.loading && !lyrics.instrumental && lyrics.lines.length > 0 && (
+              lyrics.lines.map((line, i) => (
+                <p
+                  key={i}
+                  ref={i === currentLineIndex ? activeLineRef : null}
+                  className={`${styles.lyricsLine} ${i === currentLineIndex ? styles.lyricsLineActive : ''}`}
+                >
+                  {line.text}
+                </p>
+              ))
+            )}
+            {!lyrics.loading && !lyrics.instrumental && lyrics.lines.length === 0 && lyrics.plain && (
+              <p className={styles.lyricsPlain}>{lyrics.plain}</p>
+            )}
+            {!lyrics.loading && !lyrics.instrumental && lyrics.lines.length === 0 && !lyrics.plain && (
+              <p className={styles.lyricsStatus}>歌詞が見つかりません</p>
+            )}
+          </div>
         ) : (
-          <div className={styles.coverFallback} />
+          <button
+            type="button"
+            className={styles.coverWrap}
+            onClick={() => setShowLyrics(true)}
+            aria-label="歌詞を表示"
+          >
+            {currentTrack.coverUrl ? (
+              <Image
+                src={currentTrack.coverUrl}
+                alt={currentTrack.name}
+                width={400}
+                height={400}
+                className={styles.cover}
+                unoptimized
+                priority
+              />
+            ) : (
+              <div className={styles.coverFallback} />
+            )}
+          </button>
         )}
       </div>
 
@@ -318,29 +367,6 @@ export function FullPlayer({ onClose }: Props) {
         </button>
       </div>
 
-      {/* 歌詞エリア */}
-      <div ref={lyricsRef} className={styles.lyricsArea}>
-        {lyrics.loading && (
-          <p className={styles.lyricsStatus}>読み込み中...</p>
-        )}
-        {!lyrics.loading && lyrics.instrumental && (
-          <p className={styles.lyricsStatus}>インストゥルメンタル</p>
-        )}
-        {!lyrics.loading && !lyrics.instrumental && lyrics.lines.length > 0 && (
-          lyrics.lines.map((line, i) => (
-            <p
-              key={i}
-              ref={i === currentLineIndex ? activeLineRef : null}
-              className={`${styles.lyricsLine} ${i === currentLineIndex ? styles.lyricsLineActive : ''}`}
-            >
-              {line.text}
-            </p>
-          ))
-        )}
-        {!lyrics.loading && !lyrics.instrumental && lyrics.lines.length === 0 && lyrics.plain && (
-          <p className={styles.lyricsPlain}>{lyrics.plain}</p>
-        )}
-      </div>
 
       {/* プレイリスト追加ボトムシート */}
       {showAddSheet && (
