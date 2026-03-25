@@ -44,6 +44,8 @@ export type SpotifyMe = {
   /** user-read-private スコープ時に付く（ISO 3166-1 alpha-2） */
   country?: string
   images: Array<{ url: string; height: number | null; width: number | null }>
+  /** Spotify プランの種別（"premium" | "free" | "open" など） */
+  product?: string
 }
 
 const MOCK_ACCESS_TOKEN = 'mock-access-token'

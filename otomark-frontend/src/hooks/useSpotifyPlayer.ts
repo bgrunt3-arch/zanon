@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAccessToken } from '@/lib/orbit'
+import { getAccessToken, fetchMe } from '@/lib/orbit'
 
 declare global {
   interface Window {
@@ -22,6 +22,7 @@ export type RepeatMode = 'off' | 'track' | 'queue'
 export type SpotifyPlayerState = {
   deviceId: string | null
   isReady: boolean
+  isPremium: boolean
   isPlaying: boolean
   currentTrack: CurrentTrack | null
   position: number   // ms
@@ -47,6 +48,7 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<CurrentTrack | null>(null)
   const [position, setPosition] = useState(0)
@@ -60,6 +62,14 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
   const queueRef = useRef<string[]>([])
   const shuffledQueueRef = useRef<string[]>([])
   const queueIndexRef = useRef<number>(-1)
+
+  useEffect(() => {
+    const token = getAccessToken()
+    if (!token) return
+    fetchMe(token)
+      .then((me) => setIsPremium(me.product === 'premium'))
+      .catch(() => {/* ignore */})
+  }, [])
 
   useEffect(() => {
     const token = getAccessToken()
@@ -280,5 +290,5 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
     setRepeatMode(next)
   }, [])
 
-  return { deviceId, isReady, isPlaying, currentTrack, position, duration, error, isShuffle, repeatMode, play, pause, seek, skipNext, skipPrev, setQueue, toggleShuffle, toggleRepeat }
+  return { deviceId, isReady, isPremium, isPlaying, currentTrack, position, duration, error, isShuffle, repeatMode, play, pause, seek, skipNext, skipPrev, setQueue, toggleShuffle, toggleRepeat }
 }
