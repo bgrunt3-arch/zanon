@@ -385,8 +385,8 @@ export function FullPlayer({ onClose }: Props) {
         <>
           {showAddSheet && (
             <>
-              <div onClick={() => setShowAddSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 600 }} />
-              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 601, background: '#1a1a1a', borderRadius: '20px 20px 0 0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
+              <div onClick={() => setShowAddSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 400 }} />
+              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401, background: '#1a1a1a', borderRadius: '20px 20px 0 0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
                 <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, margin: '12px auto 16px' }} />
                 <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, color: '#fff', margin: '0 0 4px', padding: '0 20px' }}>プレイリストに追加</p>
                 <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
@@ -416,7 +416,7 @@ export function FullPlayer({ onClose }: Props) {
             </>
           )}
           {showToast && (
-            <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 24, zIndex: 700, whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 24, zIndex: 500, whiteSpace: 'nowrap' }}>
               プレイリストに追加しました
             </div>
           )}
