@@ -70,12 +70,15 @@
 .coverHint {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 12px;
-  font-size: 12px;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 7px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.04em;
   pointer-events: none;
 }
 
