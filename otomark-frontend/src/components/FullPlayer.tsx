@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import styles from './FullPlayer.module.css'
 import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
 import { useLyrics, getCurrentLineIndex } from '@/hooks/useLyrics'
+import { getLocalPlaylists, addTrackToPlaylist, type LocalPlaylist } from '@/lib/localPlaylist'
 
 function CloseIcon() {
   return (
@@ -75,10 +77,36 @@ type Props = {
 
 export function FullPlayer({ onClose }: Props) {
   const { isReady, isPlaying, currentTrack, position, duration, pause, play, seek, skipNext, skipPrev, isShuffle, repeatMode, toggleShuffle, toggleRepeat } = useSpotifyPlayerContext()
+  const router = useRouter()
   const [dragY, setDragY] = useState(0)
   const [localPosition, setLocalPosition] = useState(0)
   const [isSeeking, setIsSeeking] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [showAddSheet, setShowAddSheet] = useState(false)
+  const [localPlaylists, setLocalPlaylists] = useState<LocalPlaylist[]>([])
+  const [showToast, setShowToast] = useState(false)
+
+  const handleOpenAddSheet = useCallback(() => {
+    setLocalPlaylists(getLocalPlaylists())
+    setShowAddSheet(true)
+  }, [])
+
+  const handleAddToPlaylist = useCallback((playlistId: string) => {
+    if (!currentTrack) return
+    const trackId = currentTrack.uri.split(':')[2]
+    addTrackToPlaylist(playlistId, {
+      id: trackId,
+      name: currentTrack.name,
+      artistName: currentTrack.artistName,
+      albumName: '',
+      coverUrl: currentTrack.coverUrl,
+      uri: currentTrack.uri,
+      durationMs: duration,
+    })
+    setShowAddSheet(false)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 2000)
+  }, [currentTrack, duration])
   const touchStartY = useRef<number | null>(null)
   const lyricsRef = useRef<HTMLDivElement | null>(null)
   const activeLineRef = useRef<HTMLParagraphElement | null>(null)
@@ -201,8 +229,18 @@ export function FullPlayer({ onClose }: Props) {
 
       {/* 曲名・アーティスト名 */}
       <div className={styles.trackInfo}>
-        <p className={styles.trackName}>{currentTrack.name}</p>
-        <p className={styles.artistName}>{currentTrack.artistName}</p>
+        <div className={styles.trackInfoRow}>
+          <div className={styles.trackInfoText}>
+            <p className={styles.trackName}>{currentTrack.name}</p>
+            <p className={styles.artistName}>{currentTrack.artistName}</p>
+          </div>
+          <button
+            type="button"
+            className={styles.addBtn}
+            onClick={handleOpenAddSheet}
+            aria-label="プレイリストに追加"
+          >＋</button>
+        </div>
       </div>
 
       {/* シークバー */}
@@ -233,8 +271,8 @@ export function FullPlayer({ onClose }: Props) {
         </div>
       </div>
 
-      {/* シャッフル・リピート */}
-      <div className={styles.modeRow}>
+      {/* コントロール（shuffle - prev - play - next - repeat） */}
+      <div className={styles.controls}>
         <button
           type="button"
           className={`${styles.modeBtn} ${isShuffle ? styles.modeBtnActive : ''}`}
@@ -243,18 +281,6 @@ export function FullPlayer({ onClose }: Props) {
         >
           <ShuffleIcon />
         </button>
-        <button
-          type="button"
-          className={`${styles.modeBtn} ${repeatMode !== 'off' ? styles.modeBtnActive : ''}`}
-          aria-label={repeatMode === 'off' ? 'リピートON' : repeatMode === 'queue' ? '1曲リピートに変更' : 'リピートOFF'}
-          onClick={toggleRepeat}
-        >
-          <RepeatIcon mode={repeatMode} />
-        </button>
-      </div>
-
-      {/* コントロール */}
-      <div className={styles.controls}>
         <button
           type="button"
           className={styles.iconBtn}
@@ -282,6 +308,14 @@ export function FullPlayer({ onClose }: Props) {
         >
           <SkipForwardIcon />
         </button>
+        <button
+          type="button"
+          className={`${styles.modeBtn} ${repeatMode !== 'off' ? styles.modeBtnActive : ''}`}
+          aria-label={repeatMode === 'off' ? 'リピートON' : repeatMode === 'queue' ? '1曲リピートに変更' : 'リピートOFF'}
+          onClick={toggleRepeat}
+        >
+          <RepeatIcon mode={repeatMode} />
+        </button>
       </div>
 
       {/* 歌詞エリア */}
@@ -307,6 +341,48 @@ export function FullPlayer({ onClose }: Props) {
           <p className={styles.lyricsPlain}>{lyrics.plain}</p>
         )}
       </div>
+
+      {/* プレイリスト追加ボトムシート */}
+      {showAddSheet && (
+        <>
+          <div onClick={() => setShowAddSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 400 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401, background: '#1a1a1a', borderRadius: '20px 20px 0 0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
+            <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, margin: '12px auto 16px' }} />
+            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, color: '#fff', margin: '0 0 12px', padding: '0 20px' }}>プレイリストに追加</p>
+            {localPlaylists.length === 0 ? (
+              <div style={{ padding: '16px 20px 8px', textAlign: 'center' }}>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 16 }}>プレイリストがまだありません</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddSheet(false); onClose(); router.push('/create') }}
+                  style={{ padding: '10px 24px', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, border: 'none', borderRadius: 24, cursor: 'pointer' }}
+                >プレイリストを作成する</button>
+              </div>
+            ) : (
+              <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+                {localPlaylists.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleAddToPlaylist(p.id)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span>{p.name}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 400 }}>{p.tracks.length}曲</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* 追加完了トースト */}
+      {showToast && (
+        <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 24, zIndex: 500, whiteSpace: 'nowrap' }}>
+          プレイリストに追加しました
+        </div>
+      )}
     </div>
   )
 }

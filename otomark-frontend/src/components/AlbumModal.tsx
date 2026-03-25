@@ -462,14 +462,6 @@ export function AlbumModal() {
                   <p className={styles.trackArtists}>{track.artists}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className={styles.addBtn}
-                onClick={() => openAddSheet(track)}
-                aria-label={`${track.name}をプレイリストに追加`}
-              >
-                ＋
-              </button>
             </div>
           ))}
 

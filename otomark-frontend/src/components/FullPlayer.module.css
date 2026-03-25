@@ -127,6 +127,37 @@
   min-width: 0;
 }
 
+.trackInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trackInfoText {
+  flex: 1;
+  min-width: 0;
+}
+
+.addBtn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.addBtn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .trackName {
   font-size: clamp(20px, 5vw, 26px);
   font-weight: 700;
@@ -253,8 +284,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 12px 32px 0;
+  gap: 12px;
+  padding: 16px 24px 0;
   width: 100%;
   flex-shrink: 0;
 }
