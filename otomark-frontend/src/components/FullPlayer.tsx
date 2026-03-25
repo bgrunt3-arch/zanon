@@ -217,7 +217,7 @@ export function FullPlayer({ onClose }: Props) {
       </button>
 
       {/* メインエリア（カバー ↔ 歌詞） */}
-      <div className={styles.mainArea}>
+      <div className={`${styles.mainArea}${showLyrics ? ` ${styles.mainAreaLyrics}` : ''}`}>
         {showLyrics ? (
           <div
             ref={lyricsRef}

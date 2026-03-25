@@ -52,14 +52,18 @@
 
 /* メインエリア（カバー ↔ 歌詞） */
 .mainArea {
-  flex: 1;
   width: 100%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+/* 歌詞表示時はフレックスで残り領域を埋める */
+.mainAreaLyrics {
+  flex: 1;
+  min-height: 0;
 }
 
 /* カバー下のタップヒント */
