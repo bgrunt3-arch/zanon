@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import styles from './FullPlayer.module.css'
 import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
 import { useLyrics, getCurrentLineIndex } from '@/hooks/useLyrics'
-import { getLocalPlaylists, addTrackToPlaylist, type LocalPlaylist } from '@/lib/localPlaylist'
+import { getLocalPlaylists, addTrackToPlaylist, saveLocalPlaylist, type LocalPlaylist } from '@/lib/localPlaylist'
 
 function CloseIcon() {
   return (
@@ -78,7 +77,6 @@ type Props = {
 
 export function FullPlayer({ onClose }: Props) {
   const { isReady, isPlaying, currentTrack, position, duration, pause, play, seek, skipNext, skipPrev, isShuffle, repeatMode, toggleShuffle, toggleRepeat } = useSpotifyPlayerContext()
-  const router = useRouter()
   const [dragY, setDragY] = useState(0)
   const [localPosition, setLocalPosition] = useState(0)
   const [isSeeking, setIsSeeking] = useState(false)
@@ -93,22 +91,44 @@ export function FullPlayer({ onClose }: Props) {
     setShowAddSheet(true)
   }, [])
 
-  const handleAddToPlaylist = useCallback((playlistId: string) => {
-    if (!currentTrack) return
-    const trackId = currentTrack.uri.split(':')[2]
-    addTrackToPlaylist(playlistId, {
-      id: trackId,
+  const currentTrackData = useCallback(() => {
+    if (!currentTrack) return null
+    return {
+      id: currentTrack.uri.split(':')[2],
       name: currentTrack.name,
       artistName: currentTrack.artistName,
       albumName: '',
       coverUrl: currentTrack.coverUrl,
       uri: currentTrack.uri,
       durationMs: duration,
+    }
+  }, [currentTrack, duration])
+
+  const handleAddToPlaylist = useCallback((playlistId: string) => {
+    const track = currentTrackData()
+    if (!track) return
+    addTrackToPlaylist(playlistId, track)
+    setShowAddSheet(false)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 2000)
+  }, [currentTrackData])
+
+  const handleCreateAndAdd = useCallback(() => {
+    const track = currentTrackData()
+    if (!track) return
+    const id = crypto.randomUUID()
+    saveLocalPlaylist({
+      id,
+      name: `${track.name}のプレイリスト`,
+      description: '',
+      coverUrl: track.coverUrl,
+      createdAt: new Date().toISOString(),
+      tracks: [track],
     })
     setShowAddSheet(false)
     setShowToast(true)
     setTimeout(() => setShowToast(false), 2000)
-  }, [currentTrack, duration])
+  }, [currentTrackData])
   const touchStartY = useRef<number | null>(null)
   const lyricsRef = useRef<HTMLDivElement | null>(null)
   const activeLineRef = useRef<HTMLParagraphElement | null>(null)
@@ -393,7 +413,7 @@ export function FullPlayer({ onClose }: Props) {
                   {/* 新規作成 */}
                   <button
                     type="button"
-                    onClick={() => { setShowAddSheet(false); onClose(); router.push('/create') }}
+                    onClick={handleCreateAndAdd}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#1db954', fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                   >
                     <span style={{ width: 40, height: 40, borderRadius: 6, background: 'rgba(29,185,84,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>＋</span>
