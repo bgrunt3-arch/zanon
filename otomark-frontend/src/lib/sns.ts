@@ -27,6 +27,8 @@ export type ArtistSnsPost = {
   avatarUrl: string | null
   content: string
   postedAt: string
+  /** ISO 8601形式の投稿日時。例: "2026-03-22T12:00:00Z" */
+  publishedAt?: string
   /** 投稿元プラットフォーム。未指定時は 'x' */
   platform?: SnsPlatform
   /** 元投稿へのリンク（任意） */
@@ -235,6 +237,7 @@ export async function fetchRecentSnsPosts(
             avatarUrl: v.thumbnailUrl,
             content: v.title,
             postedAt: relativeTime(v.publishedAt),
+            publishedAt: v.publishedAt,
             platform: 'youtube',
             url: v.videoUrl,
             videoId: v.videoId,
