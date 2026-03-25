@@ -848,7 +848,7 @@ export default function HomePage() {
         <section ref={feedScrollRef} className={`${styles.feedSection} ${styles.homeFeedScroll}`} data-nav-scroll onScroll={handleScroll} style={{ paddingBottom: 'calc(50px + env(safe-area-inset-bottom, 0px) + 4px + 68px)' }}>
             {(activeFeedTab === 'news' && snsLoading) || (activeFeedTab === 'spotify' && loading) ? (
             <div className={styles.emptyFeed} role="status" aria-live="polite">
-              <div className={`${styles.emptyFeedOrb} ${styles.emptyFeedOrbLoading}`} aria-hidden>
+              <div className={styles.emptyFeedOrb} aria-hidden>
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedDot} />
@@ -951,7 +951,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className={styles.emptyFeed} role="status">
-              <div className={`${styles.emptyFeedOrb} ${snsLoading ? styles.emptyFeedOrbLoading : ''}`} aria-hidden>
+              <div className={styles.emptyFeedOrb} aria-hidden>
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedDot} />
