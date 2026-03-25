@@ -625,8 +625,15 @@ export default function HomePage() {
   }, [activeArtistId, activeFeedTab, selectedArtists])
 
   const filteredSnsPosts = useMemo(() => {
-    if (activeArtistId === 'all') return snsPosts
-    return snsPosts.filter((p) => p.artistId === activeArtistId)
+    const posts = activeArtistId === 'all'
+      ? snsPosts
+      : snsPosts.filter((p) => p.artistId === activeArtistId)
+
+    return [...posts].sort((a, b) => {
+      const dateA = new Date(a.publishedAt ?? 0).getTime()
+      const dateB = new Date(b.publishedAt ?? 0).getTime()
+      return dateB - dateA
+    })
   }, [snsPosts, activeArtistId])
 
   const visibleSnsPosts = useMemo(() => {
