@@ -6,12 +6,9 @@ import Link from 'next/link'
 import styles from '../orbit.module.css'
 import {
   clearAccessToken,
-  clearForceMockFallback,
   fetchMe,
   getAccessToken,
   getSelectedArtists,
-  isMockMode,
-  setForceMockFallback,
   type SpotifyArtist,
   type SpotifyMe,
 } from '@/lib/orbit'
@@ -22,11 +19,6 @@ export default function MyPage() {
   const [picks, setPicks] = useState<SpotifyArtist[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [mockMode, setMockMode] = useState(false)
-
-  useEffect(() => {
-    setMockMode(isMockMode())
-  }, [])
 
   useEffect(() => {
     const token = getAccessToken()
@@ -105,7 +97,7 @@ export default function MyPage() {
       <div className={styles.shell}>
         <h1 className={styles.title}>マイページ</h1>
 
-        <div className={styles.toolbar}>
+        <div className={styles.toolbar} style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             {loading ? (
               <>
@@ -135,6 +127,12 @@ export default function MyPage() {
               </>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            aria-label="閉じる"
+            style={{ background: 'none', border: 'none', color: '#adc2d8', fontSize: 22, cursor: 'pointer', padding: '4px 8px', lineHeight: 1 }}
+          >✕</button>
         </div>
 
         {error && (
@@ -190,30 +188,6 @@ export default function MyPage() {
           </button>
         </div>
 
-        <div className={styles.row} style={{ marginTop: 24, justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className={styles.meta}>データソース</span>
-          <button
-            type="button"
-            className={styles.mockToggle}
-            data-active={mockMode}
-            onClick={() => {
-              if (mockMode) {
-                clearForceMockFallback()
-                localStorage.removeItem('orbit.mockMode')
-                setMockMode(false)
-              } else {
-                setForceMockFallback()
-                localStorage.setItem('orbit.mockMode', '1')
-                setMockMode(true)
-              }
-            }}
-          >
-            <span className={styles.mockToggleTrack}>
-              <span className={styles.mockToggleThumb} />
-            </span>
-            <span>{mockMode ? 'モック' : 'Spotify'}</span>
-          </button>
-        </div>
 
         <div className={styles.row} style={{ marginTop: 16 }}>
           <button type="button" className={styles.ghostButton} onClick={relogin} disabled={loading}>

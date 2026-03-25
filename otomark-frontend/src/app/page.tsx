@@ -40,14 +40,7 @@ import { fetchArtistNews, type LastFmArtistInfo } from '@/lib/lastfm'
 import { lockScroll } from '@/lib/scrollLock'
 import { useSpotifyPlayerContext } from '@/contexts/SpotifyPlayerContext'
 import { useAlbumModalContext } from '@/contexts/AlbumModalContext'
-
-type VideoMusic = {
-  title: string
-  artist: string
-  spotifyUrl: string | null
-  spotifyTrackId: string | null
-  coverUrl: string | null
-}
+import { YouTubePlayer } from '@/components/YouTubePlayer'
 
 type AlbumItem = {
   id: string
@@ -227,8 +220,6 @@ export default function HomePage() {
   const [snsPosts, setSnsPosts] = useState<ArtistSnsPost[]>([])
   const [snsLoading, setSnsLoading] = useState<boolean>(true)
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null)
-  const [videoMusicCache, setVideoMusicCache] = useState<Record<string, VideoMusic | null>>({})
-  const [videoMusicLoading, setVideoMusicLoading] = useState<Record<string, boolean>>({})
   const [trackFeedArtistId, setTrackFeedArtistId] = useState<string | null>(null)
   // Spotifyフィードは一時停止中
   const [activeFeedTab, setActiveFeedTab] = useState<'news' | 'spotify'>('spotify')
@@ -281,30 +272,6 @@ export default function HomePage() {
   // setQueue は useCallback([]) で安定しているため依存配列に含めない
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedItems])
-
-  useEffect(() => {
-    if (!expandedVideoId) return
-    if (expandedVideoId in videoMusicCache) return
-    if (videoMusicLoading[expandedVideoId]) return
-    const videoId = expandedVideoId
-    const base = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '')
-    const url = base
-      ? `${base}/api/v1/youtube/music?videoId=${videoId}`
-      : `/api/v1/youtube/music?videoId=${videoId}`
-    setVideoMusicLoading((prev) => ({ ...prev, [videoId]: true }))
-    fetch(url)
-      .then((r) => r.json())
-      .then((data: { track: VideoMusic | null }) => {
-        setVideoMusicCache((prev) => ({ ...prev, [videoId]: data.track ?? null }))
-      })
-      .catch(() => {
-        setVideoMusicCache((prev) => ({ ...prev, [videoId]: null }))
-      })
-      .finally(() => {
-        setVideoMusicLoading((prev) => ({ ...prev, [videoId]: false }))
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedVideoId])
 
   useEffect(() => {
     const saved = localStorage.getItem(ACTIVE_ARTIST_KEY)
@@ -880,7 +847,7 @@ export default function HomePage() {
 
         <section ref={feedScrollRef} className={`${styles.feedSection} ${styles.homeFeedScroll}`} data-nav-scroll onScroll={handleScroll} style={{ paddingBottom: 'calc(50px + env(safe-area-inset-bottom, 0px) + 4px + 68px)' }}>
             {(activeFeedTab === 'news' && snsLoading) || (activeFeedTab === 'spotify' && loading) ? (
-            <div className={styles.emptyFeed} role="status" aria-live="polite" style={{ marginTop: 0, minHeight: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '15vh', borderRadius: 0, border: 'none', background: 'transparent', boxShadow: 'none' }}>
+            <div className={styles.emptyFeed} role="status" aria-live="polite">
               <div className={`${styles.emptyFeedOrb} ${styles.emptyFeedOrbLoading}`} aria-hidden>
                 <span className={styles.emptyFeedRing} />
                 <span className={styles.emptyFeedRing} />
@@ -899,8 +866,6 @@ export default function HomePage() {
             <div className={styles.feed}>
               {visibleSnsPosts.map((post, i) => {
                 const isYoutube = post.platform === 'youtube' && post.videoId
-                const isExpanded = expandedVideoId === post.videoId
-
                 if (isYoutube) {
                   return (
                     <div key={`${post.artistId}-${i}`} className={`${styles.post} ${styles.snsBlock} ${styles.youtubeCard}`}>
@@ -913,57 +878,16 @@ export default function HomePage() {
                         </div>
                       </div>
                       <p className={styles.snsContent}>{post.content}</p>
-                      {isExpanded ? (
-                        <>
-                          <div className={styles.youtubeEmbed}>
-                            <button
-                              type="button"
-                              className={styles.youtubeCloseBtn}
-                              onClick={() => setExpandedVideoId(null)}
-                              aria-label="動画を閉じる"
-                            >✕</button>
-                            <iframe
-                              src={`https://www.youtube.com/embed/${post.videoId}?autoplay=1`}
-                              title={post.content}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className={styles.youtubeIframe}
-                            />
-                          </div>
-                          {videoMusicLoading[post.videoId!] && (
-                            <div className={styles.youtubeMusicCard}>
-                              <span className={styles.youtubeMusicLoading}>楽曲を認識中...</span>
-                            </div>
-                          )}
-                          {!videoMusicLoading[post.videoId!] && videoMusicCache[post.videoId!] && (() => {
-                            const music = videoMusicCache[post.videoId!]!
-                            return (
-                              <div className={styles.youtubeMusicCard}>
-                                {music.coverUrl && (
-                                  <img src={music.coverUrl} alt="" className={styles.youtubeMusicCover} />
-                                )}
-                                <div className={styles.youtubeMusicInfo}>
-                                  <span className={styles.youtubeMusicTitle}>{music.title}</span>
-                                  <span className={styles.youtubeMusicArtist}>{music.artist}</span>
-                                </div>
-                                {music.spotifyUrl && (
-                                  <a
-                                    href={music.spotifyUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={styles.youtubeMusicSpotifyBtn}
-                                    aria-label="Spotifyで聴く"
-                                  >
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-                                    </svg>
-                                    Spotifyで聴く
-                                  </a>
-                                )}
-                              </div>
-                            )
-                          })()}
-                        </>
+                      {expandedVideoId === post.videoId ? (
+                        <div className={styles.youtubeEmbed}>
+                          <button
+                            type="button"
+                            className={styles.youtubeCloseBtn}
+                            onClick={() => setExpandedVideoId(null)}
+                            aria-label="動画を閉じる"
+                          >✕</button>
+                          <YouTubePlayer videoId={post.videoId!} title={post.content} />
+                        </div>
                       ) : (
                         <button
                           type="button"

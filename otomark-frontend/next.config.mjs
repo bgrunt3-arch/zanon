@@ -40,6 +40,11 @@ const nextConfig = {
       { protocol: 'https', hostname: '*.musicbrainz.org' },
     ],
   },
+  async redirects() {
+    return [
+      { source: '/favicon.ico', destination: '/icon.svg', permanent: false },
+    ]
+  },
   async rewrites() {
     const isDev = process.env.NODE_ENV !== 'production'
     const backendUrl = process.env.NEXT_BACKEND_URL

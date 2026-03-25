@@ -523,7 +523,7 @@ export async function fetchAudioFeatures(
   return result
 }
 
-const CLIENT_ID = (process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ?? 'fd5502e75e274fdb917df77dbdcc568a').trim()
+const CLIENT_ID = (process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ?? '').trim()
 const SCOPE = 'user-top-read user-read-private user-read-email streaming user-modify-playback-state user-read-recently-played user-library-read playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private'
 
 function getSpotifyRedirectUri(): string {

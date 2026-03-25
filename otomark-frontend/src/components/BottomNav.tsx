@@ -44,7 +44,7 @@ const CreateIcon = () => (
 const NAV_ITEMS = [
   { href: '/',        label: 'ホーム',        Icon: HomeIcon    },
   { href: '/search',  label: '検索',          Icon: SearchIcon  },
-  { href: '/library', label: 'マイライブラリ', Icon: LibraryIcon },
+  { href: '/library', label: 'ライブラリ', Icon: LibraryIcon },
   { href: '/create',  label: '作成する',       Icon: CreateIcon  },
 ]
 

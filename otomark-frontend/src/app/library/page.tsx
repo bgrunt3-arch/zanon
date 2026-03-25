@@ -162,7 +162,7 @@ function LibraryContent() {
     <div className={styles.screen} data-nav-scroll>
       <div className={styles.shell}>
         <div className={styles.sectionHeader} style={{ marginBottom: 24 }}>
-          <h1 className={styles.spotifyNavTitle}>マイライブラリ</h1>
+          <h1 className={styles.spotifyNavTitle}>ライブラリ</h1>
         </div>
 
         <section style={{ marginBottom: 32 }}>
