@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import styles from './FullPlayer.module.css'
@@ -379,46 +380,48 @@ export function FullPlayer({ onClose }: Props) {
       </div>
 
 
-      {/* プレイリスト追加ボトムシート */}
-      {showAddSheet && (
+      {/* ポータル：ボトムシート＋トースト */}
+      {typeof document !== 'undefined' && createPortal(
         <>
-          <div onClick={() => setShowAddSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 400 }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401, background: '#1a1a1a', borderRadius: '20px 20px 0 0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-            <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, margin: '12px auto 16px' }} />
-            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, color: '#fff', margin: '0 0 12px', padding: '0 20px' }}>プレイリストに追加</p>
-            {localPlaylists.length === 0 ? (
-              <div style={{ padding: '16px 20px 8px', textAlign: 'center' }}>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 16 }}>プレイリストがまだありません</p>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddSheet(false); onClose(); router.push('/create') }}
-                  style={{ padding: '10px 24px', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, border: 'none', borderRadius: 24, cursor: 'pointer' }}
-                >プレイリストを作成する</button>
-              </div>
-            ) : (
-              <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
-                {localPlaylists.map((p) => (
+          {showAddSheet && (
+            <>
+              <div onClick={() => setShowAddSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 600 }} />
+              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 601, background: '#1a1a1a', borderRadius: '20px 20px 0 0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
+                <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2, margin: '12px auto 16px' }} />
+                <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, color: '#fff', margin: '0 0 4px', padding: '0 20px' }}>プレイリストに追加</p>
+                <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+                  {/* 新規作成 */}
                   <button
-                    key={p.id}
                     type="button"
-                    onClick={() => handleAddToPlaylist(p.id)}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                    onClick={() => { setShowAddSheet(false); onClose(); router.push('/create') }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#1db954', fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                   >
-                    <span>{p.name}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 400 }}>{p.tracks.length}曲</span>
+                    <span style={{ width: 40, height: 40, borderRadius: 6, background: 'rgba(29,185,84,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>＋</span>
+                    新規プレイリストに追加
                   </button>
-                ))}
+                  {/* 既存プレイリスト */}
+                  {localPlaylists.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleAddToPlaylist(p.id)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span>{p.name}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 400 }}>{p.tracks.length}曲</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* 追加完了トースト */}
-      {showToast && (
-        <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 24, zIndex: 500, whiteSpace: 'nowrap' }}>
-          プレイリストに追加しました
-        </div>
+            </>
+          )}
+          {showToast && (
+            <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', left: '50%', transform: 'translateX(-50%)', background: '#1db954', color: '#000', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 24, zIndex: 700, whiteSpace: 'nowrap' }}>
+              プレイリストに追加しました
+            </div>
+          )}
+        </>,
+        document.body,
       )}
     </div>
   )
