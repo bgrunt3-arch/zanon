@@ -66,6 +66,7 @@ export function MiniPlayer() {
       {fullPlayerOpen && <FullPlayer onClose={() => setFullPlayerOpen(false)} />}
       <div
         className={styles.miniPlayer}
+        style={fullPlayerOpen ? { display: 'none' } : undefined}
         onClick={() => setFullPlayerOpen(true)}
         role="button"
         tabIndex={0}
