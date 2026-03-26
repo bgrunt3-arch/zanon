@@ -14,9 +14,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Orbit',
   description: '推し5人のタイムラインアプリ',
+  manifest: '/manifest.json',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: '/icon-512.png',
+    apple: '/icon-512.png',
   },
   openGraph: {
     title: 'Orbit',
