@@ -3,6 +3,7 @@
 - Fix build/test failures immediately.
 - Only ask when critically ambiguous.
 - Focus on speed and minimizing conversational turns to save tokens.
+- After every code change, commit and push immediately.
 
 ## Project Context
 - Music review app inspired by Filmarks UI/UX
