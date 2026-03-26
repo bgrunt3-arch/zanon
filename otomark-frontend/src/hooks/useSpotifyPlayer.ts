@@ -50,6 +50,7 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
   const [isReady, setIsReady] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
   const isPremiumRef = useRef(false)
+  const [premiumChecked, setPremiumChecked] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<CurrentTrack | null>(null)
@@ -73,11 +74,14 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
         const premium = me.product === 'premium'
         setIsPremium(premium)
         isPremiumRef.current = premium
+        setPremiumChecked(true)
       })
-      .catch(() => {/* ignore */})
+      .catch(() => { setPremiumChecked(true) })
   }, [])
 
   useEffect(() => {
+    // Premiumアカウントのみ Spotify Web Playback SDK を初期化する
+    if (!premiumChecked || !isPremium) return
     const token = getAccessToken()
     if (!token || token === 'mock-access-token') return
 
@@ -186,7 +190,8 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
     return () => {
       playerRef.current?.disconnect()
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [premiumChecked, isPremium])
 
   const playUri = async (spotifyUri: string): Promise<void> => {
     if (!deviceId) return
