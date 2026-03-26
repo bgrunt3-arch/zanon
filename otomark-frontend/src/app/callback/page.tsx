@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from '../orbit.module.css'
-import { exchangeCodeForToken, getAccessToken, getSelectedArtists, saveAccessToken } from '@/lib/orbit'
+import { exchangeCodeForToken, getAccessToken, getSelectedArtists, saveAccessToken, clearAccessToken } from '@/lib/orbit'
 
 const EXCHANGED_CODE_KEY = 'orbit.spotify.exchangedCode'
 
@@ -53,6 +53,8 @@ export default function CallbackPage() {
     // Mark as "in progress" immediately so StrictMode double-invocation doesn't exchange twice.
     sessionStorage.setItem(EXCHANGED_CODE_KEY, code)
 
+    // 念のため古いトークンを削除してから新しいトークンを取得する
+    clearAccessToken()
     exchangeCodeForToken(code)
       .then((token) => {
         saveAccessToken(token)

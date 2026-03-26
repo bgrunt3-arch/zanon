@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import styles from '../orbit.module.css'
-import { getSpotifyAuthorizeUrl } from '@/lib/orbit'
+import { getSpotifyAuthorizeUrl, clearAccessToken } from '@/lib/orbit'
 
 export default function LoginPage() {
   const [error, setError] = useState('')
@@ -10,6 +10,8 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setError('')
     try {
+      // 既存のトークンをクリアして別アカウントのトークンが残らないようにする
+      clearAccessToken()
       const authorizeUrl = await getSpotifyAuthorizeUrl()
       window.location.href = authorizeUrl
     } catch {
