@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from '../app/orbit.module.css'
+import { useAlbumModalContext } from '@/contexts/AlbumModalContext'
 
 const HomeIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
 export function BottomNav() {
   const pathname = usePathname()
   const hide = pathname === '/login' || pathname === '/callback' || pathname === '/onboarding'
+  const { isOpen, closeModal } = useAlbumModalContext()
 
   return (
     <nav className={styles.bottomNav} aria-label="メインメニュー" style={hide ? { display: 'none' } : undefined}>
@@ -64,6 +66,7 @@ export function BottomNav() {
               className={`${styles.bottomNavLink} ${active ? styles.bottomNavLinkActive : ''}`}
               aria-label={label}
               aria-current={active ? 'page' : undefined}
+              onClick={isOpen ? closeModal : undefined}
             >
               <span className={styles.bottomNavIcon}><Icon /></span>
               <span className={styles.bottomNavLabel}>{label}</span>
