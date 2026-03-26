@@ -7,7 +7,7 @@ type SpotifyPlayerContextValue = SpotifyPlayerState & SpotifyPlayerControls
 
 const SpotifyPlayerContext = createContext<SpotifyPlayerContextValue | null>(null)
 
-const FORCE_FREE_MODE = true  // テスト用フラグ（確認後 false に戻すこと）
+const FORCE_FREE_MODE = false  // テスト用フラグ
 
 export function SpotifyPlayerProvider({ children }: { children: React.ReactNode }) {
   const player = useSpotifyPlayer()
