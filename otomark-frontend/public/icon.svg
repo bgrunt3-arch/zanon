@@ -1,5 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#000000" />
-  <circle cx="64" cy="64" r="38" fill="none" stroke="#1DB954" stroke-width="10" />
-  <circle cx="64" cy="64" r="8" fill="#ADC2D8" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16162A"/>
+      <stop offset="100%" stop-color="#09090F"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="centerGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Orbit ring 1: tilt -35° -->
+  <ellipse cx="256" cy="256" rx="176" ry="68"
+    fill="none" stroke="white" stroke-width="2" stroke-opacity="0.22"
+    transform="rotate(-35 256 256)"/>
+
+  <!-- Orbit ring 2: tilt +35° -->
+  <ellipse cx="256" cy="256" rx="176" ry="68"
+    fill="none" stroke="white" stroke-width="2" stroke-opacity="0.15"
+    transform="rotate(35 256 256)"/>
+
+  <!-- 5 artist dots distributed on the two rings -->
+  <!-- Ring1 right  (256 + 176·cos0°·cos35° − 68·sin0°·sin35°, ...) ≈ (400, 217) -->
+  <circle cx="400" cy="217" r="21" fill="#FF6B6B" filter="url(#glow)"/>
+  <!-- Ring2 left   ≈ (112, 217) -->
+  <circle cx="112" cy="217" r="16" fill="#FFD93D" filter="url(#glow)"/>
+  <!-- Ring1 left   ≈ (112, 295) -->
+  <circle cx="112" cy="295" r="17" fill="#4ECDC4" filter="url(#glow)"/>
+  <!-- Ring2 right  ≈ (400, 295) -->
+  <circle cx="400" cy="295" r="14" fill="#C77DFF" filter="url(#glow)"/>
+  <!-- Ring1 top    ≈ (217, 198) -->
+  <circle cx="217" cy="198" r="13" fill="#6BCB77" filter="url(#glow)"/>
+
+  <!-- Center: the user (white star) -->
+  <circle cx="256" cy="256" r="36" fill="white" filter="url(#centerGlow)" opacity="0.25"/>
+  <circle cx="256" cy="256" r="24" fill="white"/>
 </svg>
