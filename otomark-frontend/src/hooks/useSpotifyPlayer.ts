@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAccessToken, fetchMe, fetchTrackPreview } from '@/lib/orbit'
+import { getAccessToken, fetchMe, fetchTrackPreview, refreshAccessToken } from '@/lib/orbit'
 
 declare global {
   interface Window {
@@ -84,7 +84,11 @@ export function useSpotifyPlayer(): SpotifyPlayerState & SpotifyPlayerControls {
     const initPlayer = () => {
       const player = new window.Spotify.Player({
         name: 'Orbit Player',
-        getOAuthToken: (cb) => cb(getAccessToken() ?? ''),
+        getOAuthToken: (cb) => {
+          refreshAccessToken()
+            .then((newToken) => cb(newToken ?? getAccessToken() ?? ''))
+            .catch(() => cb(getAccessToken() ?? ''))
+        },
         volume: 0.8,
         robustness: 'SW_SECURE_CRYPTO',
       } as Spotify.PlayerInit)
