@@ -3,7 +3,15 @@
 
 
 
+
+
+
+
 **推しアーティスト5人のYouTube最新動画をひとつの画面に。Spotifyで即再生。**
+
+
+
+
 
 
 
@@ -16,7 +24,15 @@
 
 
 
+
+
+
+
 🔗 **Live:** https://zanon-nine.vercel.app/
+
+
+
+
 
 
 
@@ -26,5 +42,8 @@
 
 
 
-![mockup](https://raw.githubusercontent.com/bgrunt3-arch/zanon/main/orbit-mockup-3screens.png)
 
+
+
+
+![mockup](https://raw.githubusercontent.com/bgrunt3-arch/zanon/main/orbit-mockup-3screens.png)
