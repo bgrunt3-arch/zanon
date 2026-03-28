@@ -989,7 +989,8 @@ export async function searchArtists(
   const q = raw.toLowerCase()
   const off = Math.max(0, Math.min(SPOTIFY_SEARCH_MAX_OFFSET, offset))
   const page = SPOTIFY_SEARCH_PAGE_SIZE
-  if (isMockMode() || token === MOCK_ACCESS_TOKEN) {
+  // モックトークンの場合のみモックデータを返す（isMockMode()だけでは判定しない）
+  if (token === MOCK_ACCESS_TOKEN) {
     if (!q) return MOCK_ARTISTS.slice(off, off + page)
     const filtered = MOCK_ARTISTS.filter(
       (a) =>
@@ -1017,6 +1018,7 @@ export async function searchArtists(
     throw new Error(`Spotify API error (search-artists) ${res.status}: ${text}`)
   }
   const data = (await res.json()) as { artists?: { items?: SpotifyArtist[] } }
+  console.log('search response:', data)
   const items = (data.artists?.items ?? []) as SpotifyArtist[]
 
   if (off === 0 && items.length > 0) {

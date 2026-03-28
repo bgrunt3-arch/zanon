@@ -6,6 +6,7 @@ import Link from 'next/link'
 import styles from '../orbit.module.css'
 import {
   clearAccessToken,
+  clearForceMockFallback,
   fetchMe,
   getAccessToken,
   getSelectedArtists,
@@ -85,6 +86,8 @@ export default function MyPage() {
 
   const relogin = () => {
     clearAccessToken()
+    clearForceMockFallback()
+    try { localStorage.removeItem('orbit.mockMode') } catch { /* ignore */ }
     router.push('/login')
   }
 

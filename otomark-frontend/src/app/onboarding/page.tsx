@@ -13,7 +13,6 @@ import {
   isMockMode,
   saveSelectedArtists,
   searchArtists,
-  setForceMockFallback,
   type SpotifyArtist,
 } from '@/lib/orbit'
 
@@ -47,12 +46,7 @@ export default function OnboardingPage() {
     setError('')
     fetchTopArtists(token)
       .then((artists) => setTopArtists(artists))
-      .catch((e: unknown) => {
-        setForceMockFallback()
-        fetchTopArtists(token)
-          .then((artists) => setTopArtists(artists))
-          .catch(() => setTopArtists([]))
-      })
+      .catch(() => setTopArtists([]))
       .finally(() => setTopArtistsLoading(false))
   }, [retryKey])
 
