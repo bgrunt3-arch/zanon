@@ -1,3 +1,5 @@
+import { getCached as getMemCached, setCached as setMemCached } from './cache'
+
 export type SpotifyArtist = {
   id: string
   name: string
@@ -1209,6 +1211,9 @@ export async function fetchArtistRecentAlbums(
   }
 
   const cacheKey = `orbit.cache.artistAlbums.${artistId}`
+  const memCached = getMemCached<ReturnType<typeof mockAlbums>>(cacheKey)
+  if (memCached) return memCached
+
   const cached = cacheGet<ReturnType<typeof mockAlbums>>(cacheKey)
   if (cached) return cached
 
@@ -1261,6 +1266,7 @@ export async function fetchArtistRecentAlbums(
     }
   }
 
+  setMemCached(cacheKey, allItems, 60 * 60 * 1000)
   cacheSet(cacheKey, allItems, CACHE_TTL_LONG)
   return allItems
 }

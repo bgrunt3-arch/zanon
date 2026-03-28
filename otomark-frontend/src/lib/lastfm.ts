@@ -1,3 +1,5 @@
+import { getCached, setCached } from './cache'
+
 function proxyUrl(params: Record<string, string>): string {
   const base = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '')
   const endpoint = base ? `${base}/api/v1/lastfm/proxy` : '/api/v1/lastfm/proxy'
@@ -107,9 +109,15 @@ export async function fetchSimilarArtists(
  * https://www.last.fm/api/show/artist.getInfo
  */
 export async function fetchArtistNews(artistName: string): Promise<LastFmArtistInfo | null> {
+  const cacheKey = `lastfm.artistInfo.${artistName}`
+  const cached = getCached<LastFmArtistInfo>(cacheKey)
+  if (cached) return cached
+
   const url = proxyUrl({ method: 'artist.getinfo', artist: artistName })
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Last.fm getinfo failed: ${res.status}`)
   const data = await res.json()
-  return (data.artist as LastFmArtistInfo) ?? null
+  const result = (data.artist as LastFmArtistInfo) ?? null
+  if (result) setCached(cacheKey, result, 60 * 60 * 1000)
+  return result
 }

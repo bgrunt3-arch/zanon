@@ -4,6 +4,7 @@
  */
 
 import { getArtistLatestPost, getRecentSnsPosts } from './mockData'
+import { getCached, setCached } from './cache'
 
 /** MusicBrainz から取得するアーティスト情報（ID, SNSリンク等） */
 export type MusicBrainzArtist = {
@@ -217,6 +218,10 @@ export async function fetchRecentSnsPosts(
     return getRecentSnsPosts(artistIds, limit, artistInfo)
   }
 
+  const cacheKey = `sns.recentPosts.${[...artistIds].sort().join(',')}.${limit}`
+  const cached = getCached<ArtistSnsPost[]>(cacheKey)
+  if (cached) return cached
+
   try {
     const urlsByArtist = await fetchArtistSnsUrlsBatch(info)
     const infoMap = new Map(info.map((a) => [a.id, a.name]))
@@ -253,7 +258,9 @@ export async function fetchRecentSnsPosts(
     const nested = await Promise.all(ytFetches)
     for (const arr of nested) posts.push(...arr)
 
-    return posts.slice(0, limit)
+    const result = posts.slice(0, limit)
+    setCached(cacheKey, result, 5 * 60 * 1000)
+    return result
   } catch {
     return []
   }
